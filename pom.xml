@@ -9,9 +9,6 @@
 
 	<name>line-bot-testing</name>
 
-	<!-- <parent> <groupId>com.google.cloud.samples</groupId> <artifactId>shared-configuration</artifactId> 
-		<version>1.0.11</version> </parent> -->
-
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
@@ -22,30 +19,8 @@
 	<properties>
 		<java.version>11</java.version>
 		<line-bot.version>3.0.0</line-bot.version>
-		<spring-boot.version>2.1.7.RELEASE</spring-boot.version>
 		<appengine-mvn.version>2.0.0</appengine-mvn.version>
 	</properties>
-
-	<dependencyManagement>
-		<dependencies>
-		 <!-- 
-			<dependency>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-dependencies</artifactId>
-				<version>${spring-boot.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency> -->
-
-			<dependency>
-				<groupId>org.springframework.cloud</groupId>
-				<artifactId>spring-cloud-dependencies</artifactId>
-				<version>Greenwich.SR1</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
 
 	<dependencies>
 		<!-- spring-boot -->
@@ -53,7 +28,6 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 			<exclusions>
-				<!-- Exclude the Tomcat dependency -->
 				<exclusion>
 					<groupId>org.springframework.boot</groupId>
 					<artifactId>spring-boot-starter-tomcat</artifactId>
@@ -64,6 +38,15 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-jetty</artifactId>
+		</dependency>
+
+		<!-- spring-cloud -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-dependencies</artifactId>
+			<version>Greenwich.SR1</version>
+			<type>pom</type>
+			<scope>import</scope>
 		</dependency>
 
 		<!-- line-bot -->
@@ -79,13 +62,7 @@
 			<version>${line-bot.version}</version>
 		</dependency>
 
-		<dependency>
-			<groupId>com.linecorp.bot</groupId>
-			<artifactId>line-bot-api-client</artifactId>
-			<version>${line-bot.version}</version>
-		</dependency>
-
-		<!-- JAVA11 -->
+		<!-- 補足JAVA11缺的 -->
 		<dependency>
 			<groupId>com.squareup.okhttp3</groupId>
 			<artifactId>okhttp</artifactId>
