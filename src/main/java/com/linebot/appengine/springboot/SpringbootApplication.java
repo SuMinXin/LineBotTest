@@ -10,19 +10,18 @@ import org.springframework.web.bind.annotation.RestController;
 @SpringBootApplication
 public class SpringbootApplication {
 
-  public static void main(String[] args) {
-    SpringApplication.run(SpringbootApplication.class, args);
-  }
+	public static void main(String[] args) {
+		SpringApplication.run(SpringbootApplication.class, args);
+	}
 
-  @GetMapping("/")
-  public String hello() {
-    return "Hi, 歡迎來到LineBot測試!!";
-  }
+	@GetMapping("/")
+	public String hello() {
+		return "Hi, 歡迎來到LineBot測試!!";
+	}
 
-  @PostMapping("/webhook")
-  public String webhook() {
-    return "webhook";
-  }
+	@PostMapping("/webhook")
+	public String webhook() {
+		return "webhook";
+	}
 
 }
-

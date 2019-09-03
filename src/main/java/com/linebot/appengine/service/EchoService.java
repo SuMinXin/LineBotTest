@@ -16,23 +16,23 @@ import com.linecorp.bot.spring.boot.annotation.LineMessageHandler;
 @LineMessageHandler
 public class EchoService {
 
-  @Value("${line.bot.channelToken}")
-  private String channelToken;
+	@Value("${line.bot.channelToken}")
+	private String channelToken;
 
-  private LineMessagingClient lineMessageClient;
+	private LineMessagingClient lineMessageClient;
 
-  @PostConstruct
-  private void buildLineMessagingService() {
-    lineMessageClient = LineMessagingClient.builder(() -> channelToken).build();
-  }
+	@PostConstruct
+	private void buildLineMessagingService() {
+		lineMessageClient = LineMessagingClient.builder(() -> channelToken).build();
+	}
 
-  @EventMapping
-  public void handleTextMessageEvent(MessageEvent<TextMessageContent> event) throws Exception {
-    // LOGGER.info("event: {}", event);
-    // BotApiResponse apiResposnse =
-    lineMessageClient.replyMessage(new ReplyMessage(event.getReplyToken(),
-        Collections.singletonList(new TextMessage(event.getSource().getUserId())))).get();
-    // sLOGGER.info("Sent messages: {}", apiResponse);
-  }
+	@EventMapping
+	public void handleTextMessageEvent(MessageEvent<TextMessageContent> event) throws Exception {
+		// LOGGER.info("event: {}", event);
+		// BotApiResponse apiResposnse =
+		lineMessageClient.replyMessage(new ReplyMessage(event.getReplyToken(),
+				Collections.singletonList(new TextMessage(event.getSource().getUserId())))).get();
+		// sLOGGER.info("Sent messages: {}", apiResponse);
+	}
 
 }
