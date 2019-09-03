@@ -11,10 +11,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.linecorp.bot.model.event.CallbackRequest;
+import com.linecorp.bot.model.event.Event;
+import com.linecorp.bot.model.event.MessageEvent;
+import com.linecorp.bot.model.event.message.TextMessageContent;
+import com.linecorp.bot.model.message.TextMessage;
+import com.linecorp.bot.spring.boot.annotation.EventMapping;
+import com.linecorp.bot.spring.boot.annotation.LineMessageHandler;
 
 @RestController
 @SpringBootApplication
+@LineMessageHandler
 public class SpringbootApplication {
 
 	public static void main(String[] args) {
@@ -31,12 +37,18 @@ public class SpringbootApplication {
 		return "webhook";
 	}
 
-	@PostMapping("/testrequest")
-	public String testrequest(CallbackRequest events) {
-		// events.forEach(this::dispatch);
-		return events.getEvents().get(0).getSource().getUserId();
+	@EventMapping
+	public TextMessage handleTextMessageEvent(MessageEvent<TextMessageContent> event) {
+		System.out.println("event: " + event);
+		return new TextMessage(event.getMessage().getText());
 	}
 
+	@EventMapping
+	public void handleDefaultMessageEvent(Event event) {
+		System.out.println("event: " + event);
+	}
+
+	// 測試用
 	@GetMapping("/newsignature")
 	public String newsignature() {
 		try {
