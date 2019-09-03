@@ -1,13 +1,14 @@
-package com.linebot.appengine.springboot;
+package com.linebot.appengine;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.ImportResource;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @SpringBootApplication
+@ImportResource("com.linebot.appengine.service.*")
 public class SpringbootApplication {
 
   public static void main(String[] args) {
@@ -17,11 +18,6 @@ public class SpringbootApplication {
   @GetMapping("/")
   public String hello() {
     return "Hi, 歡迎來到LineBot測試!!";
-  }
-
-  @PostMapping("/webhook")
-  public String webhook() {
-    return "webhook";
   }
 
 }
