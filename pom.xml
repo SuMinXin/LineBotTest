@@ -9,6 +9,14 @@
 
 	<name>line-bot-testing</name>
 
+	<properties>
+		<java.version>1.8</java.version>
+		<line-bot.version>3.0.0</line-bot.version>
+		<appengine-mvn.version>2.0.0</appengine-mvn.version>
+		<maven-jar-plugin.version>3.1.1</maven-jar-plugin.version>
+		<kotlin.version>1.3.50</kotlin.version>
+	</properties>
+
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
@@ -16,14 +24,18 @@
 		<relativePath />
 	</parent>
 
-	<properties>
-		<java.version>11</java.version>
-		<line-bot.version>3.0.0</line-bot.version>
-		<appengine-mvn.version>2.0.0</appengine-mvn.version>
-		<maven-jar-plugin.version>3.1.1</maven-jar-plugin.version>
-	</properties>
-
 	<dependencies>
+		<!--<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+		</dependency>-->
+		<!-- slf4j -->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<scope>provided</scope>
+		</dependency>
+
 		<!-- spring-boot -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
