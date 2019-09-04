@@ -1,0 +1,7 @@
+line.bot:
+  channel-token: "/aFO6c+2s+8GKFErh5UeFXhjSIcu4ii/K8Q+i+F8HTRgIULhBuRKPaJlEPggbYoKXFDSAIiBHHpPgoSsf6MXC4S/wGcVq7TvxPVJynP7U9dkbxOigL4QHinxICCjY8n3obXIe/O/xiUPycz9ThJFLQdB04t89/1O/w1cDnyilFU="
+  channel-secret: '4b211bce638d98dfb39fd2f757d52a71'
+  handler.path: /callback
+  
+#logging.level:
+#   com.linecorp.bot.client.wire: INFO
