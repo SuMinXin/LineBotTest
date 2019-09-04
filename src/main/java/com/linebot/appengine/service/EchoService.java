@@ -1,15 +1,15 @@
 package com.linebot.appengine.service;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
 import com.linecorp.bot.model.Multicast;
-import com.linecorp.bot.model.ReplyMessage;
 import com.linecorp.bot.model.event.Event;
 import com.linecorp.bot.model.event.MessageEvent;
 import com.linecorp.bot.model.event.message.StickerMessageContent;
@@ -55,8 +55,7 @@ public class EchoService extends AbstractService {
 			} else if (event.getMessage().getText().contains("+")) {
 				//
 			} else {
-				client.replyMessage(new ReplyMessage(event.getReplyToken(),
-						Collections.singletonList(new TextMessage(event.getSource().getUserId())))).get();
+				defaultMessage(event);
 			}
 		} catch (Exception e) {
 			LOGGER.info(LOG_RQ, event);
