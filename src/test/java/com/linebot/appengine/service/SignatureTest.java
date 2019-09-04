@@ -9,7 +9,7 @@ public class SignatureTest {
 
 	@Test
 	public void createTest() throws Exception {
-		String channelSecret = "110d29531c085354329394e2b6eefee5";
+		String channelSecret = "334c522f9936567ce2b22f18016be253";
 		// Request body string
 		String httpRequestBody = "{\"events\":[{\"type\":\"message\",\"replyToken\":\"c9993dced4994005b6aad85ec96432ae\",\"source\":{\"userId\":\"Udbb24468127d89d1b43f54fb60517669\",\"type\":\"user\"},\"timestamp\":1567481188463,\"message\":{\"type\":\"text\",\"id\":\"10503215608937\",\"text\":\"hi\"}}],\"destination\":\"Uc46d6cda07653357422640d533994cb9\"}";
 		SecretKeySpec key = new SecretKeySpec(channelSecret.getBytes(), "HmacSHA256");
