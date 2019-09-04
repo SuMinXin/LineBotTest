@@ -5,8 +5,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.Test;
 
-public class EchoService {
-
+public class EchoServiceTest {
 	@Test
 	public void createTest() throws Exception {
 		String channelSecret = "110d29531c085354329394e2b6eefee5";
