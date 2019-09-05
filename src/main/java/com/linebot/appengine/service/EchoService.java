@@ -1,5 +1,6 @@
 package com.linebot.appengine.service;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -9,6 +10,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.google.api.services.sheets.v4.Sheets;
+import com.google.api.services.sheets.v4.model.ValueRange;
+import com.linebot.googledoc.GoogleDocService;
 import com.linecorp.bot.model.Multicast;
 import com.linecorp.bot.model.event.Event;
 import com.linecorp.bot.model.event.MessageEvent;
@@ -23,7 +27,6 @@ import com.linecorp.bot.spring.boot.annotation.LineMessageHandler;
 @Service
 @LineMessageHandler
 public class EchoService extends AbstractService {
-
 	private static final Logger LOGGER = LoggerFactory.getLogger(EchoService.class);
 	private static final String LOG_RQ = "Request Data: {}";
 
@@ -41,6 +44,7 @@ public class EchoService extends AbstractService {
 	@EventMapping
 	public void handleTextMessageEvent(MessageEvent<TextMessageContent> event) {
 		try {
+			readGoogleDoc();
 			if ("hi".equalsIgnoreCase(event.getMessage().getText())) {
 				// push 活動內容
 				List<Message> message = new ArrayList<>();
@@ -60,6 +64,21 @@ public class EchoService extends AbstractService {
 		} catch (Exception e) {
 			LOGGER.info(LOG_RQ, event);
 			defaultMessage(event);
+		}
+	}
+
+	private void readGoogleDoc() throws IOException {
+		// Build a new authorized API client service.
+		Sheets service = GoogleDocService.getSheetsService();
+		// https://docs.google.com/spreadsheets/d/1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s/edit#gid=0
+		String spreadsheetId = "1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s";
+		String range = "Class Data!A2:E";
+		ValueRange response = service.spreadsheets().values().get(spreadsheetId, range).execute();
+		List<List<Object>> values = response.getValues();
+		if (values == null || values.isEmpty()) {
+			LOGGER.info("No data found.");
+		} else {
+			// 取資料
 		}
 	}
 
