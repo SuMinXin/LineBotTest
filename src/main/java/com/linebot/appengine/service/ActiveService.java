@@ -2,7 +2,11 @@ package com.linebot.appengine.service;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -10,6 +14,8 @@ import org.springframework.util.CollectionUtils;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import com.linebot.googledoc.GoogleDocService;
+import com.linecorp.bot.model.ReplyMessage;
+import com.linecorp.bot.model.message.TextMessage;
 
 @Service
 public class ActiveService extends AbstractService {
@@ -24,6 +30,9 @@ public class ActiveService extends AbstractService {
 		setPormotions();
 		actives.forEach(action -> {
 			StringBuilder active = new StringBuilder();
+			active.append("活動代碼：");
+			active.append(action.getId());
+			active.append('\n');
 			active.append("活動名稱：");
 			active.append(action.getName());
 			active.append('\n');
@@ -37,6 +46,23 @@ public class ActiveService extends AbstractService {
 	public List<Promotion> getPromotions() {
 		setPormotions();
 		return actives;
+	}
+
+	// Sell
+	public String sell(String id) throws Exception {
+		// 數量 -1
+		String response = null;
+		Promotion action = actives.stream().filter(o -> id.equals(o.getId())).findFirst().orElse(null);
+		if (action == null) {
+			throw new Exception("Active Not Exist");
+		}
+		response = action.getName();
+		if (action.getAmount() > 0) {
+			action.setAmount(action.getAmount() - 1);
+		} else {
+			throw new Exception("Sold Out");
+		}
+		return response;
 	}
 
 	private void setPormotions() {
