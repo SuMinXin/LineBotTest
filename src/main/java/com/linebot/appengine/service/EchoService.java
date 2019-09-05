@@ -1,22 +1,30 @@
 package com.linebot.appengine.service;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import com.google.api.services.sheets.v4.Sheets;
+import com.google.api.services.sheets.v4.model.ValueRange;
+import com.linebot.googledoc.GoogleDocService;
+import com.linecorp.bot.model.Multicast;
 import com.linecorp.bot.model.PushMessage;
 import com.linecorp.bot.model.ReplyMessage;
 import com.linecorp.bot.model.action.Action;
 import com.linecorp.bot.model.action.PostbackAction;
 import com.linecorp.bot.model.action.URIAction;
+import com.linecorp.bot.model.event.Event;
 import com.linecorp.bot.model.event.MessageEvent;
 import com.linecorp.bot.model.event.PostbackEvent;
 import com.linecorp.bot.model.event.message.StickerMessageContent;
@@ -36,30 +44,42 @@ public class EchoService extends AbstractService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EchoService.class);
 
+  private static final String LOG_RQ = "Request Data: {}";
+
+  @EventMapping
+  public void handleDefaultMessageEvent(Event event) {
+    LOGGER.info(LOG_RQ, event);
+  }
+
   @EventMapping
   public StickerMessage handleStickerMessageEvent(MessageEvent<StickerMessageContent> event) {
-    LOGGER.info("Request Data: {}", event);
+    LOGGER.info(LOG_RQ, event);
     return new StickerMessage(event.getMessage().getPackageId(), event.getMessage().getStickerId());
   }
 
   @EventMapping
-  public void handleTextMessageEvent(MessageEvent<TextMessageContent> event)
-      throws InterruptedException, ExecutionException, URISyntaxException {
+  public void handleTextMessageEvent(MessageEvent<TextMessageContent> event) {
     String text = event.getMessage().getText();
     String userId = event.getSource().getUserId();
-    switch (text.toUpperCase()) {
-      case "HI":
-        lineMessagingClient.pushMessage(new PushMessage(userId,
-            getPromotions().stream().map(TextMessage::new).collect(Collectors.toList())));
-        break;
-      case "YO":
-        Message message = new TemplateMessage("優惠活動來囉~~", getCarouselTemplate());
-        lineMessagingClient.pushMessage(new PushMessage(userId, message));
-        break;
-      default:
-        lineMessagingClient
-            .replyMessage(new ReplyMessage(event.getReplyToken(), new TextMessage(text))).get();
-        break;
+    try {
+      switch (text.toUpperCase()) {
+        case "HI":
+          lineMessagingClient.pushMessage(new PushMessage(userId,
+              getPromotions().stream().map(TextMessage::new).collect(Collectors.toList())));
+          break;
+        case "YO":
+          Message message = new TemplateMessage("優惠活動來囉~~", getCarouselTemplate());
+          lineMessagingClient.pushMessage(new PushMessage(userId, message));
+          break;
+        default:
+          lineMessagingClient
+              .replyMessage(new ReplyMessage(event.getReplyToken(), new TextMessage(text))).get();
+          // defaultMessage(event);
+          break;
+      }
+    } catch (Exception e) {
+      LOGGER.info(LOG_RQ, event);
+      defaultMessage(event);
     }
   }
 
@@ -100,6 +120,39 @@ public class EchoService extends AbstractService {
     }).collect(Collectors.toList());
 
     return new CarouselTemplate(columns);
+  }
+
+  @SuppressWarnings("unused")
+  private void readGoogleDoc() throws IOException {
+    // Build a new authorized API client service.
+    Sheets service = GoogleDocService.getSheetsService();
+    // https://docs.google.com/spreadsheets/d/1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s/edit#gid=0
+    String spreadsheetId = "1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s";
+    String range = "Class Data!A2:E";
+    ValueRange response = service.spreadsheets().values().get(spreadsheetId, range).execute();
+    List<List<Object>> values = response.getValues();
+    if (values == null || values.isEmpty()) {
+      LOGGER.info("No data found.");
+    } else {
+      // 取資料
+    }
+  }
+
+  private void defaultMessage(MessageEvent<TextMessageContent> event) {
+    try {
+      Set<String> user = new HashSet<>();
+      user.add(event.getSource().getUserId());
+
+      String exMessage = "這個帳號沒有辦法您剛才的訊息內容做出回覆。\n送出 【HI】 的話可以看到目前最新的優惠活動唷~ \n期待您下次的訊息內容！";
+      List<Message> message = new ArrayList<>();
+      // https://devdocs.line.me/files/sticker_list.pdf
+      message.add(new StickerMessage("2", "38"));
+      message.add(new TextMessage(exMessage));
+
+      lineMessagingClient.multicast(new Multicast(user, message));
+    } catch (Exception e) {
+      LOGGER.info(LOG_RQ, event);
+    }
   }
 
 }
