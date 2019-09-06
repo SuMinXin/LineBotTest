@@ -64,8 +64,14 @@ public class ActiveService {
 		return response;
 	}
 
+	public void resetData() {
+		prevSearchTime = 0;
+		readData();
+	}
+
 	private void readData() {
 		int minutes = (int) ((System.currentTimeMillis() - prevSearchTime) / (1000 * 60));
+		prevSearchTime = System.currentTimeMillis();
 		if (actives.isEmpty() || minutes > 10) {
 			// https://docs.google.com/spreadsheets/d/1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s/edit#gid=0
 			String spreadsheetId = "1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s";
