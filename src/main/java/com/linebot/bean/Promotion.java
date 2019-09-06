@@ -1,4 +1,4 @@
-package com.linebot.appengine.service;
+package com.linebot.bean;
 
 public class Promotion {
 

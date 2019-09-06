@@ -1,7 +1,7 @@
 line.bot:
-  channel-token: 'RvAYPFzyDbs+6xsIdzQJN3xZDm2O3rNUFVXOgqUqwlJYn3ZVjCjrHhny509T/O5Gm8l9QJR+fhthYS58eKzDhnIhQIdHOnblfSHSOlofImI9S3DaanonIZ8bhDEnyR+97DeL1/q1HsNKP3BtyucmPQdB04t89/1O/w1cDnyilFU='
-  channel-secret: '334c522f9936567ce2b22f18016be253'
+  channel-token: 'wb8j7ThVe3/EkF5JifrstV7J+7RXMZkDMGVeHjygjGIDvCs9s1iwqkFhslzGRRjqSh1KFwNvBM2ghwdGVK0VG0RsD3aBYzMaFlE7C5a7a/FqGbHOiHgVNGb5Y/Ti6z+MoIXFSVxEia9dDdJ4/Pj+CwdB04t89/1O/w1cDnyilFU='
+  channel-secret: 'b98ec764f6b609527ae34446d4e6a1cf'
   handler.path: /callback
-  
+
 #logging.level:
 #   com.linecorp.bot.client.wire: INFO

@@ -1,4 +1,4 @@
-package com.linebot.appengine.service;
+package com.linebot.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import com.linecorp.bot.client.LineMessagingClient;
