@@ -36,9 +36,9 @@ import com.linecorp.bot.spring.boot.annotation.LineMessageHandler;
 
 @Service
 @LineMessageHandler
-public class EchoService extends AbstractService {
+public class GoogleBotService extends AbstractService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(EchoService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(GoogleBotService.class);
 
   private static final String LOG_RQ = "Request Data: {}";
 
@@ -53,7 +53,14 @@ public class EchoService extends AbstractService {
   @EventMapping
   public StickerMessage handleStickerMessageEvent(MessageEvent<StickerMessageContent> event) {
     LOGGER.info(LOG_RQ, event);
-    return new StickerMessage(event.getMessage().getPackageId(), event.getMessage().getStickerId());
+    String packageId = event.getMessage().getPackageId();
+    String stickerId = event.getMessage().getStickerId();
+    if ("2".equals(packageId) && "32".equals(stickerId)) {
+      activeService.resetData();
+      return new StickerMessage("1", "109");
+    }
+
+    return new StickerMessage(packageId, stickerId);
   }
 
   @EventMapping

@@ -57,6 +57,11 @@ public class ActiveService {
     return response;
   }
 
+  public void resetData() {
+    actives.clear();
+    readData();
+  }
+
   private void readData() {
     if (actives.isEmpty()) {
       // https://docs.google.com/spreadsheets/d/1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s/edit#gid=0
