@@ -70,7 +70,7 @@ public class GoogleBotService extends AbstractService {
     try {
       switch (text.toUpperCase()) {
         case "HI":
-          lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getPromotionList()
+          lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getProductList()
               .stream().map(TextMessage::new).collect(Collectors.toList())));
           break;
         case "YO":
@@ -129,7 +129,7 @@ public class GoogleBotService extends AbstractService {
   private CarouselTemplate getCarouselTemplate() {
     String defaultImageUrl = "https://activity.liontravel.com/Images/Activity_Loading.jpg";
     String defaultLionUrl = "https://www.liontravel.com/category/zh-tw/index";
-    List<CarouselColumn> columns = activeService.getPromotions().stream().map(c -> {
+    List<CarouselColumn> columns = activeService.getProducts().stream().map(c -> {
       // Carousel最多3個Action
       Action action1 = new URIAction("詳細內容", getURI(c.getActiveUrl(), defaultLionUrl), null);
       Action action2 = new PostbackAction("立即購買", "action=buy&item=" + c.getId(), null);

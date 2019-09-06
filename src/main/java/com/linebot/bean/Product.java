@@ -1,6 +1,6 @@
 package com.linebot.bean;
 
-public class Promotion {
+public class Product {
 
 	private String id;
 	private String name;
