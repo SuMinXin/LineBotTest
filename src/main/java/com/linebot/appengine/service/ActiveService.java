@@ -2,25 +2,25 @@ package com.linebot.appengine.service;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import com.linebot.googledoc.GoogleDocService;
-import com.linecorp.bot.model.ReplyMessage;
-import com.linecorp.bot.model.message.TextMessage;
 
 @Service
 public class ActiveService extends AbstractService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ActiveService.class);
+
+	private Lock lock = new ReentrantLock();
 
 	private static List<Promotion> actives = new ArrayList<>();
 
@@ -51,16 +51,21 @@ public class ActiveService extends AbstractService {
 	// Sell
 	public String sell(String id) throws Exception {
 		// 數量 -1
+		lock.lock();
 		String response = null;
-		Promotion action = actives.stream().filter(o -> id.equals(o.getId())).findFirst().orElse(null);
-		if (action == null) {
-			throw new Exception("Active Not Exist");
-		}
-		response = action.getName();
-		if (action.getAmount() > 0) {
-			action.setAmount(action.getAmount() - 1);
-		} else {
-			throw new Exception("Sold Out");
+		try {
+			Promotion action = actives.stream().filter(o -> id.equals(o.getId())).findFirst().orElse(null);
+			if (action == null) {
+				throw new Exception("Active Not Exist");
+			}
+			response = action.getName();
+			if (action.getAmount() > 0) {
+				action.setAmount(action.getAmount() - 1);
+			} else {
+				throw new Exception("Sold Out");
+			}
+		} finally {
+			lock.unlock();
 		}
 		return response;
 	}
