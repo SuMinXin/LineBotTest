@@ -78,7 +78,12 @@ public class GoogleBotService extends AbstractService {
           lineMessagingClient.pushMessage(new PushMessage(userId, message));
           break;
         default:
-          defaultMessage(event);
+          if (text.contains("+")) {
+            int item = Integer.parseInt(text.replace("+", ""));
+            sellItem(String.valueOf(item), event.getReplyToken());
+          } else {
+            defaultMessage(event);
+          }
           break;
       }
     } catch (Exception e) {
@@ -91,6 +96,7 @@ public class GoogleBotService extends AbstractService {
   public void handlePostBackEvent(PostbackEvent event)
       throws InterruptedException, ExecutionException {
     LOGGER.info(LOG_RQ, event);
+
     List<String> datas = Arrays.asList(event.getPostbackContent().getData().split("&"));
     Map<String, String> params =
         datas.stream().map(data -> data.split("=")).collect(Collectors.toMap(a -> a[0], a -> a[1]));
