@@ -70,9 +70,9 @@ public final class GoogleSheetService {
 
   public void updateGoogleSheet(String spreadSheetId, List<ValueRange> data) {
     try {
-      BatchUpdateValuesRequest batchBody =
+      BatchUpdateValuesRequest request =
           new BatchUpdateValuesRequest().setValueInputOption("USER_ENTERED").setData(data);
-      sheets.spreadsheets().values().batchUpdate(spreadSheetId, batchBody).execute();
+      sheets.spreadsheets().values().batchUpdate(spreadSheetId, request).execute();
     } catch (IOException e) {
       LOGGER.error("Update Google Sheet Fail.", e);
     }
