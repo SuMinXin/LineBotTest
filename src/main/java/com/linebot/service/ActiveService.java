@@ -2,6 +2,8 @@ package com.linebot.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import com.linebot.bean.Promotion;
@@ -10,6 +12,8 @@ import com.linebot.bean.Promotion;
 public class ActiveService {
 
   private static List<Promotion> actives = new ArrayList<>();
+
+  private Lock lock = new ReentrantLock();
 
   // HI
   public List<String> getPromotionList() {
@@ -28,6 +32,29 @@ public class ActiveService {
   public List<Promotion> getPromotions() {
     readData();
     return actives;
+  }
+
+  // Sell
+  public String sell(String id) throws Exception {
+    // 數量 -1
+    lock.lock();
+    String response = null;
+    try {
+      Promotion action =
+          actives.stream().filter(o -> id.equals(o.getId())).findFirst().orElse(null);
+      if (action == null) {
+        throw new Exception("Active Not Exist");
+      }
+      response = action.getName();
+      if (action.getAmount() > 0) {
+        action.setAmount(action.getAmount() - 1);
+      } else {
+        throw new Exception("Sold Out");
+      }
+    } finally {
+      lock.unlock();
+    }
+    return response;
   }
 
   private void readData() {
