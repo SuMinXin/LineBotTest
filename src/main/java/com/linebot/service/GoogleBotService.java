@@ -110,7 +110,7 @@ public class GoogleBotService extends AbstractService {
 			actName = activeService.sell(itemID);
 			lineMessagingClient.replyMessage(new ReplyMessage(replyToken, new TextMessage(actName + " 購買成功!"))).get();
 		} catch (Exception e) {
-			if (actName.isBlank() || actName.isEmpty()) {
+			if ("Active Not Exist".equalsIgnoreCase(e.getMessage())) {
 				lineMessagingClient.replyMessage(new ReplyMessage(replyToken, new TextMessage("很抱歉，您選購的商品不存在唷"))).get();
 			} else {
 				lineMessagingClient.replyMessage(
