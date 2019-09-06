@@ -1,6 +1,8 @@
 package com.linebot.service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,7 +10,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.linebot.bean.Promotion;
@@ -17,10 +18,7 @@ import com.linebot.bean.Promotion;
 public class ActiveService {
 
 	private static Map<String, Promotion> actives = new HashMap<>();
-	private static long prevSearchTime = 0;
-
-	@Value("${lion.bot.expiretime}")
-	private Integer activeExpire;
+	private static List<Integer> exprireTime = new ArrayList<>(Arrays.asList(0, 10, 20, 30, 40, 50));
 
 	private Lock lock = new ReentrantLock();
 
@@ -65,14 +63,22 @@ public class ActiveService {
 	}
 
 	public void resetData() {
-		prevSearchTime = 0;
 		readData();
 	}
 
+	private boolean isExpire() {
+		if (LocalDateTime.now().getMinute() > exprireTime.get(0)) {
+			exprireTime.add(exprireTime.get(0));
+			exprireTime.remove(0);
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 	private void readData() {
-		int minutes = (int) ((System.currentTimeMillis() - prevSearchTime) / (1000 * 60));
-		prevSearchTime = System.currentTimeMillis();
-		if (actives.isEmpty() || minutes > 10) {
+		// ExprireTime
+		if (actives.isEmpty() || isExpire()) {
 			// https://docs.google.com/spreadsheets/d/1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s/edit#gid=0
 			String spreadsheetId = "1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s";
 			String range = "Action!A2:H";
