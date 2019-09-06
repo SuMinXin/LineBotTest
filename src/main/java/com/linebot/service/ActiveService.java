@@ -6,25 +6,34 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
-import com.linebot.bean.Promotion;
+import com.google.api.services.sheets.v4.model.ValueRange;
+import com.linebot.bean.Product;
 
 @Service
 public class ActiveService {
 
-	private static Map<String, Promotion> actives = new HashMap<>();
-	private static List<Integer> exprireTime = new ArrayList<>(Arrays.asList(0, 10, 20, 30, 40, 50));
-
 	private Lock lock = new ReentrantLock();
 
+	private GoogleSheetService sheetService = GoogleSheetService.getInstance();
+
+	private static final String SHEET_ID = "1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s";
+
+	private static final String SHEET_NAME = "Action!";
+
+	private static Map<String, Product> productsMap = new HashMap<>();
+
+	private static List<Integer> exprireTime = new ArrayList<>(Arrays.asList(0, 10, 20, 30, 40, 50));
+
 	// HI
-	public List<String> getPromotionList() {
-		return getPromotions().stream().map(action -> {
+	public List<String> getProductList() {
+		return getProducts().stream().map(action -> {
 			StringBuilder active = new StringBuilder();
 			active.append("活動名稱：");
 			active.append(action.getName());
@@ -35,9 +44,9 @@ public class ActiveService {
 	}
 
 	// YO
-	public List<Promotion> getPromotions() {
-		readData();
-		return new ArrayList<>(actives.values());
+	public List<Product> getProducts() {
+		readData(false);
+		return new ArrayList<>(productsMap.values());
 	}
 
 	// Sell
@@ -46,13 +55,14 @@ public class ActiveService {
 		lock.lock();
 		String response = null;
 		try {
-			Promotion action = actives.get(id);
+			Product action = productsMap.get(id);
 			if (action == null) {
 				throw new Exception("Active Not Exist");
 			}
 			response = action.getName();
 			if (action.getAmount() > 0) {
 				action.setAmount(action.getAmount() - 1);
+				updateProduct(id);
 			} else {
 				throw new Exception("Sold Out");
 			}
@@ -63,7 +73,23 @@ public class ActiveService {
 	}
 
 	public void resetData() {
-		readData();
+		readData(true);
+	}
+
+	private void readData(boolean isReset) {
+		if (productsMap.isEmpty() || isExpire() || isReset) {
+			// https://docs.google.com/spreadsheets/d/1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s/edit#gid=0
+			String range = SHEET_NAME + "A2:H";
+			List<List<Object>> response = GoogleSheetService.getInstance().readGoogleSheet(SHEET_ID, range);
+			if (!response.isEmpty()) {
+				List<Product> acts = response.stream().map(this::toProduct).collect(Collectors.toList());
+				for (Product act : acts) {
+					if (!productsMap.containsKey(act.getId())) {
+						productsMap.put(act.getId(), act);
+					}
+				}
+			}
+		}
 	}
 
 	private boolean isExpire() {
@@ -76,47 +102,45 @@ public class ActiveService {
 		}
 	}
 
-	private void readData() {
-		// ExprireTime
-		if (actives.isEmpty() || isExpire()) {
-			// https://docs.google.com/spreadsheets/d/1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s/edit#gid=0
-			String spreadsheetId = "1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s";
-			String range = "Action!A2:H";
-			List<List<Object>> response = GoogleSheetService.getInstance().readGoogleSheet(spreadsheetId, range);
-			if (!response.isEmpty()) {
-				List<Promotion> acts = response.stream().map(this::toPromotion).collect(Collectors.toList());
-				for (Promotion act : acts) {
-					if (!actives.containsKey(act.getId())) {
-						actives.put(act.getId(), act);
-					}
-				}
-			}
-		}
+	private Product toProduct(List<Object> object) {
+		Product product = new Product();
+		product.setId(object.get(0).toString());
+		product.setName(object.get(1).toString());
+		product.setDesc(object.get(2).toString());
+		product.setPrice(Integer.valueOf(object.get(3).toString()));
+		product.setUnit(object.get(4).toString());
+		product.setAmount(Integer.valueOf(object.get(5).toString()));
+		product.setImageUrl(object.get(6).toString());
+		product.setActiveUrl(object.get(7).toString());
+		return product;
 	}
 
-	private Promotion toPromotion(List<Object> action) {
-		Promotion promotion = new Promotion();
-		promotion.setId(action.get(0).toString());
-		promotion.setName(action.get(1).toString());
-		promotion.setDesc(action.get(2).toString());
-		promotion.setPrice(Integer.valueOf(action.get(3).toString()));
-		promotion.setUnit(action.get(4).toString());
-		promotion.setAmount(Integer.valueOf(action.get(5).toString()));
-		promotion.setImageUrl(action.get(6).toString());
-		promotion.setActiveUrl(action.get(7).toString());
-		return promotion;
-	}
-
-	public String getActiveDesc(Promotion promotion) {
+	public String getActiveDesc(Product product) {
 		StringBuilder description = new StringBuilder();
-		description.append(promotion.getDesc());
+		description.append(product.getDesc());
 		description.append('\n');
-		description.append(promotion.getPrice());
+		description.append(product.getPrice());
 		description.append("/");
-		description.append(promotion.getUnit());
+		description.append(product.getUnit());
 		description.append('\n');
-		description.append("剩餘數量：").append(promotion.getAmount());
+		description.append("剩餘數量：").append(product.getAmount());
 		return description.toString();
+	}
+
+	private void updateProduct(String id) {
+		Product product = productsMap.get(id);
+		ValueRange data = toValueRange(product);
+		sheetService.updateGoogleSheet(SHEET_ID, Arrays.asList(data));
+	}
+
+	public void updateProducts() {
+		List<ValueRange> data = productsMap.values().stream().map(this::toValueRange).collect(Collectors.toList());
+		sheetService.updateGoogleSheet(SHEET_ID, data);
+	}
+
+	private ValueRange toValueRange(Product product) {
+		return new ValueRange().setRange(SHEET_NAME + "F" + (Integer.valueOf(product.getId()) + 1))
+				.setValues(Arrays.asList(Arrays.asList(product.getAmount())));
 	}
 
 }
