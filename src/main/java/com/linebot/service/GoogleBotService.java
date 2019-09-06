@@ -90,6 +90,7 @@ public class GoogleBotService extends AbstractService {
   @EventMapping
   public void handlePostBackEvent(PostbackEvent event)
       throws InterruptedException, ExecutionException {
+    LOGGER.info(LOG_RQ, event);
     List<String> datas = Arrays.asList(event.getPostbackContent().getData().split("&"));
     Map<String, String> params =
         datas.stream().map(data -> data.split("=")).collect(Collectors.toMap(a -> a[0], a -> a[1]));

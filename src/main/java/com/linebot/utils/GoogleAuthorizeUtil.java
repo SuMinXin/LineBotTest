@@ -13,7 +13,7 @@ public final class GoogleAuthorizeUtil {
 
   private GoogleAuthorizeUtil() {}
 
-  private static final List<String> SCOPES = Arrays.asList(SheetsScopes.SPREADSHEETS_READONLY);
+  private static final List<String> SCOPES = Arrays.asList(SheetsScopes.SPREADSHEETS);
 
   public static Credential authorize() throws IOException {
     return GoogleCredential

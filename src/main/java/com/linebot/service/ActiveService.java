@@ -1,11 +1,13 @@
 package com.linebot.service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import com.google.api.services.sheets.v4.model.ValueRange;
 import com.linebot.bean.Promotion;
 
 @Service
@@ -14,6 +16,10 @@ public class ActiveService {
   private static List<Promotion> actives = new ArrayList<>();
 
   private Lock lock = new ReentrantLock();
+
+  private GoogleSheetService sheetService = GoogleSheetService.getInstance();
+
+  private static final String SHEET_ID = "1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s";
 
   // HI
   public List<String> getPromotionList() {
@@ -58,6 +64,7 @@ public class ActiveService {
   }
 
   public void resetData() {
+    updateSheet();
     actives.clear();
     readData();
   }
@@ -65,10 +72,8 @@ public class ActiveService {
   private void readData() {
     if (actives.isEmpty()) {
       // https://docs.google.com/spreadsheets/d/1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s/edit#gid=0
-      String spreadsheetId = "1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s";
       String range = "Action!A2:H";
-      List<List<Object>> response =
-          GoogleSheetService.getInstance().readGoogleSheet(spreadsheetId, range);
+      List<List<Object>> response = sheetService.readGoogleSheet(SHEET_ID, range);
       if (!response.isEmpty()) {
         actives.addAll(response.stream().map(this::toPromotion).collect(Collectors.toList()));
       }
@@ -98,6 +103,16 @@ public class ActiveService {
     description.append('\n');
     description.append("剩餘數量：").append(promotion.getAmount());
     return description.toString();
+  }
+
+  public void updateSheet() {
+    List<ValueRange> data = actives.stream().map(active -> {
+      String range = "Action2!F" + (Integer.valueOf(active.getId()) + 1);
+      return new ValueRange().setRange(range)
+          .setValues(Arrays.asList(Arrays.asList(active.getAmount())));
+    }).collect(Collectors.toList());
+
+    sheetService.updateGoogleSheet(SHEET_ID, data);
   }
 
 }
