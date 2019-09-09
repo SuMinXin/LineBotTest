@@ -1,11 +1,13 @@
 package com.linebot.bean;
 
+import java.math.BigDecimal;
+
 public class Product {
 
 	private String id;
 	private String name;
 	private String desc;
-	private Integer price;
+	private BigDecimal price;
 	private String unit;
 	private Integer amount;
 	private String imageUrl;
@@ -51,11 +53,11 @@ public class Product {
 		this.unit = unit;
 	}
 
-	public Integer getPrice() {
+	public BigDecimal getPrice() {
 		return price;
 	}
 
-	public void setPrice(Integer price) {
+	public void setPrice(BigDecimal price) {
 		this.price = price;
 	}
 
