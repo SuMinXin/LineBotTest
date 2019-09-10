@@ -77,7 +77,7 @@ public class ActiveService {
         action.setAmount(action.getAmount() - 1);
         updateProduct(id);
       } else {
-        activeFinished(id);
+        orderService.activeFinished(id); // 結算
         throw new Exception("Sold Out");
       }
     } finally {
@@ -88,12 +88,6 @@ public class ActiveService {
 
   public void addOrder(String itemID, String userID) {
     orderService.addPax(itemID, userID, 1, productsMap.get(itemID).getPrice());
-  }
-
-  // 活動結算
-  public void activeFinished(String itemID) {
-    orderService.activeFinished(itemID);
-    // productsMap.remove(itemID); // 不拉掉, 改成活動不顯示數字 = 0
   }
 
   // ---------------------------- Product Function ----------------------------
