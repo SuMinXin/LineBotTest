@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -14,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.linebot.bean.Product;
+import com.linebot.utils.JsonUtils;
 import com.linecorp.bot.model.Multicast;
 import com.linecorp.bot.model.PushMessage;
 import com.linecorp.bot.model.ReplyMessage;
@@ -21,16 +23,21 @@ import com.linecorp.bot.model.action.Action;
 import com.linecorp.bot.model.action.PostbackAction;
 import com.linecorp.bot.model.action.URIAction;
 import com.linecorp.bot.model.event.Event;
+import com.linecorp.bot.model.event.JoinEvent;
 import com.linecorp.bot.model.event.MessageEvent;
 import com.linecorp.bot.model.event.PostbackEvent;
 import com.linecorp.bot.model.event.message.StickerMessageContent;
 import com.linecorp.bot.model.event.message.TextMessageContent;
+import com.linecorp.bot.model.event.source.GroupSource;
+import com.linecorp.bot.model.event.source.RoomSource;
+import com.linecorp.bot.model.event.source.Source;
 import com.linecorp.bot.model.message.Message;
 import com.linecorp.bot.model.message.StickerMessage;
 import com.linecorp.bot.model.message.TemplateMessage;
 import com.linecorp.bot.model.message.TextMessage;
 import com.linecorp.bot.model.message.template.CarouselColumn;
 import com.linecorp.bot.model.message.template.CarouselTemplate;
+import com.linecorp.bot.model.profile.UserProfileResponse;
 import com.linecorp.bot.spring.boot.annotation.EventMapping;
 import com.linecorp.bot.spring.boot.annotation.LineMessageHandler;
 
@@ -107,6 +114,38 @@ public class LineBotService extends AbstractService {
           event.getSource().getUserId());
     } catch (Exception e) {
       defaultMessage(event);
+    }
+  }
+
+  @EventMapping
+  public void handleJoinEvent(JoinEvent event) {
+    Source source = event.getSource();
+    // String replyToken = event.getReplyToken();
+
+    String userId = source.getUserId();
+
+    try {
+      TextMessage message;
+      CompletableFuture<UserProfileResponse> userProfileFuture;
+      UserProfileResponse userProfile;
+      if (source instanceof RoomSource) {
+        message = new TextMessage("這是RoomSource");
+        userProfileFuture = lineMessagingClient.getRoomMemberProfile(source.getSenderId(), userId);
+        userProfile = userProfileFuture.get();
+      } else if (source instanceof GroupSource) {
+        message = new TextMessage("這是GroupSource");
+        userProfileFuture = lineMessagingClient.getGroupMemberProfile(source.getSenderId(), userId);
+        userProfile = userProfileFuture.get();
+      } else {
+        message = new TextMessage("這是UserSource");
+        userProfileFuture = lineMessagingClient.getProfile(userId);
+        userProfile = userProfileFuture.get();
+      }
+      LOGGER.info("UserProfile={}", userProfile.getDisplayName());
+      LOGGER.info("UserProfileJson={}", JsonUtils.objToString(userProfile));
+      lineMessagingClient.pushMessage(new PushMessage(userId, message));
+    } catch (Exception e) {
+      LOGGER.info(LOG_RQ, event);
     }
   }
 
