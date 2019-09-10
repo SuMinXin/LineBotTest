@@ -32,6 +32,8 @@ import com.linecorp.bot.model.event.MessageEvent;
 import com.linecorp.bot.model.event.PostbackEvent;
 import com.linecorp.bot.model.event.message.StickerMessageContent;
 import com.linecorp.bot.model.event.message.TextMessageContent;
+import com.linecorp.bot.model.event.source.GroupSource;
+import com.linecorp.bot.model.event.source.RoomSource;
 import com.linecorp.bot.model.event.source.Source;
 import com.linecorp.bot.model.message.Message;
 import com.linecorp.bot.model.message.StickerMessage;
@@ -83,46 +85,68 @@ public class LineBotService extends AbstractService {
   @EventMapping
   public void handleTextMessageEvent(MessageEvent<TextMessageContent> event) {
     LOGGER.info(LOG_RQ, event);
-    String text = event.getMessage().getText();
-    String userId = event.getSource().getUserId();
+    Source source = event.getSource();
     try {
-      switch (UserAction.fromMessage(text.toUpperCase())) {
-        case MY_ORDER:
-          List<OrderInfo> orderInfos = orderService.retrieveOrders(userId);
-          if (orderInfos.isEmpty()) {
-            lineMessagingClient.replyMessage(new ReplyMessage(event.getReplyToken(),
-                new TextMessage(UserAction.MY_ORDER.getSysReply())));
-          } else {
-            // 一次最多5筆TextMessage
-            if (orderInfos.size() > 5) {
-              orderInfos = orderInfos.subList(0, 5);
-            }
-
-            lineMessagingClient.replyMessage(new ReplyMessage(event.getReplyToken(),
-                orderInfos.stream().map(orderInfo -> new TextMessage(orderInfo.getOrderNo()))
-                    .collect(Collectors.toList())));
-          }
-          break;
-        case NEAR_STORE:
-          // lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getProductList()
-          // .stream().map(TextMessage::new).collect(Collectors.toList())));
-          break;
-        case NEW_ACTIVE:
-          Message message =
-              new TemplateMessage(UserAction.NEW_ACTIVE.getSysReply(), getCarouselTemplate());
-          lineMessagingClient.pushMessage(new PushMessage(userId, message));
-          break;
-        case BUY_PRODUCT:
-          int item = Integer.parseInt(text.replace(UserAction.BUY_PRODUCT.getMessage(), ""));
-          sellItem(String.valueOf(item), event.getReplyToken(), event.getSource().getUserId());
-          break;
-        default:
-          defaultMessage(event);
-          break;
+      if (source.getClass().equals(GroupSource.class)) {
+        handleGroupMessage(event, "group");
+      } else if (source.getClass().equals(RoomSource.class)) {
+        handleGroupMessage(event, "room");
+      } else {
+        handleUserMessage(event);
       }
     } catch (Exception e) {
       LOGGER.info(LOG_RQ, event);
       defaultMessage(event);
+    }
+  }
+
+  private void handleGroupMessage(MessageEvent<TextMessageContent> event, String type) {
+    String replyToken = event.getReplyToken();
+    String groupId = event.getSource().getSenderId();
+    String text = event.getMessage().getText();
+    lineMessagingClient.replyMessage(new ReplyMessage(replyToken,
+        new TextMessage("這是" + type + ", groupId=" + groupId + ", echo=" + text)));
+  }
+
+  private void handleUserMessage(MessageEvent<TextMessageContent> event)
+      throws InterruptedException, ExecutionException {
+    String text = event.getMessage().getText();
+    String replyToken = event.getReplyToken();
+    String userId = event.getSource().getUserId();
+
+    switch (UserAction.fromMessage(text.toUpperCase())) {
+      case MY_ORDER:
+        List<OrderInfo> orderInfos = orderService.retrieveOrders(userId);
+        if (orderInfos.isEmpty()) {
+          lineMessagingClient.replyMessage(
+              new ReplyMessage(replyToken, new TextMessage(UserAction.MY_ORDER.getSysReply())));
+        } else {
+          // 一次最多5筆TextMessage
+          if (orderInfos.size() > 5) {
+            orderInfos = orderInfos.subList(0, 5);
+          }
+
+          lineMessagingClient.replyMessage(new ReplyMessage(replyToken,
+              orderInfos.stream().map(orderInfo -> new TextMessage(orderInfo.getOrderNo()))
+                  .collect(Collectors.toList())));
+        }
+        break;
+      case NEAR_STORE:
+        // lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getProductList()
+        // .stream().map(TextMessage::new).collect(Collectors.toList())));
+        break;
+      case NEW_ACTIVE:
+        Message message =
+            new TemplateMessage(UserAction.NEW_ACTIVE.getSysReply(), getCarouselTemplate());
+        lineMessagingClient.pushMessage(new PushMessage(userId, message));
+        break;
+      case BUY_PRODUCT:
+        int item = Integer.parseInt(text.replace(UserAction.BUY_PRODUCT.getMessage(), ""));
+        sellItem(String.valueOf(item), replyToken, userId);
+        break;
+      default:
+        defaultMessage(event);
+        break;
     }
   }
 
