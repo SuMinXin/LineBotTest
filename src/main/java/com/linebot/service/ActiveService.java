@@ -36,7 +36,7 @@ public class ActiveService {
   // ---------------------------- 依Message 回覆 ----------------------------
   // HI
   public List<String> getProductList() {
-    return getProducts().stream().map(action -> {
+    return getProducts(true).stream().map(action -> {
       StringBuilder active = new StringBuilder();
       active.append("活動名稱：");
       active.append(action.getName());
@@ -47,9 +47,14 @@ public class ActiveService {
   }
 
   // YO
-  public List<Product> getProducts() {
+  public List<Product> getProducts(boolean excludeZero) {
     readData();
-    return new ArrayList<>(productsMap.values());
+    if (excludeZero) {
+      return productsMap.values().stream().filter(act -> act.getAmount() > 0)
+          .collect(Collectors.toList()); // 只回傳可賣商品
+    } else {
+      return new ArrayList<>(productsMap.values());
+    }
   }
 
   public void resetData() {
@@ -72,6 +77,7 @@ public class ActiveService {
         action.setAmount(action.getAmount() - 1);
         updateProduct(id);
       } else {
+        orderService.activeFinished(id); // 結算
         throw new Exception("Sold Out");
       }
     } finally {
@@ -82,12 +88,6 @@ public class ActiveService {
 
   public void addOrder(String itemID, String userID) {
     orderService.addPax(itemID, userID, 1, productsMap.get(itemID).getPrice());
-  }
-
-  // 活動結算
-  public void activeFinished(String itemID) {
-    orderService.activeFinished(itemID);
-    productsMap.remove(itemID);
   }
 
   // ---------------------------- Product Function ----------------------------

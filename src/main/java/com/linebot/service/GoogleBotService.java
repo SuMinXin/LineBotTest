@@ -6,16 +6,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import com.linebot.bean.Product;
-import com.linebot.utils.JsonUtils;
 import com.linecorp.bot.model.Multicast;
 import com.linecorp.bot.model.PushMessage;
 import com.linecorp.bot.model.ReplyMessage;
@@ -23,36 +21,26 @@ import com.linecorp.bot.model.action.Action;
 import com.linecorp.bot.model.action.PostbackAction;
 import com.linecorp.bot.model.action.URIAction;
 import com.linecorp.bot.model.event.Event;
-import com.linecorp.bot.model.event.JoinEvent;
 import com.linecorp.bot.model.event.MessageEvent;
 import com.linecorp.bot.model.event.PostbackEvent;
 import com.linecorp.bot.model.event.message.StickerMessageContent;
 import com.linecorp.bot.model.event.message.TextMessageContent;
-import com.linecorp.bot.model.event.source.GroupSource;
-import com.linecorp.bot.model.event.source.RoomSource;
-import com.linecorp.bot.model.event.source.Source;
 import com.linecorp.bot.model.message.Message;
 import com.linecorp.bot.model.message.StickerMessage;
 import com.linecorp.bot.model.message.TemplateMessage;
 import com.linecorp.bot.model.message.TextMessage;
 import com.linecorp.bot.model.message.template.CarouselColumn;
 import com.linecorp.bot.model.message.template.CarouselTemplate;
-import com.linecorp.bot.model.profile.UserProfileResponse;
 import com.linecorp.bot.spring.boot.annotation.EventMapping;
 import com.linecorp.bot.spring.boot.annotation.LineMessageHandler;
 
 @Service
 @LineMessageHandler
-public class LineBotService extends AbstractService {
+public class GoogleBotService extends AbstractService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LineBotService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(GoogleBotService.class);
 
   private static final String LOG_RQ = "Request Data: {}";
-
-  private static final String DEFAULT_URL = "https://www.liontravel.com/category/zh-tw/index";
-
-  private static final String DEFAULT_IMG_URL =
-      "https://activity.liontravel.com/Images/Activity_Loading.jpg";
 
   @Autowired
   private ActiveService activeService;
@@ -81,15 +69,11 @@ public class LineBotService extends AbstractService {
     String userId = event.getSource().getUserId();
     try {
       switch (text.toUpperCase()) {
-        case "我的訂單":
-          // lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getProductList()
-          // .stream().map(TextMessage::new).collect(Collectors.toList())));
+        case "HI":
+          lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getProductList()
+              .stream().map(TextMessage::new).collect(Collectors.toList())));
           break;
-        case "附近門市":
-          // lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getProductList()
-          // .stream().map(TextMessage::new).collect(Collectors.toList())));
-          break;
-        case "最新優惠":
+        case "YO":
           Message message = new TemplateMessage("優惠活動來囉~~", getCarouselTemplate());
           lineMessagingClient.pushMessage(new PushMessage(userId, message));
           break;
@@ -113,43 +97,13 @@ public class LineBotService extends AbstractService {
       throws InterruptedException, ExecutionException {
     LOGGER.info(LOG_RQ, event);
 
+    List<String> datas = Arrays.asList(event.getPostbackContent().getData().split("&"));
+    Map<String, String> params =
+        datas.stream().map(data -> data.split("=")).collect(Collectors.toMap(a -> a[0], a -> a[1]));
     try {
-      sellItem(event.getPostbackContent().getData(), event.getReplyToken(),
-          event.getSource().getUserId());
+      sellItem(params.get("item"), event.getReplyToken(), event.getSource().getUserId());
     } catch (Exception e) {
-      defaultMessage(event);
-    }
-  }
-
-  @EventMapping
-  public void handleJoinEvent(JoinEvent event) {
-    Source source = event.getSource();
-    // String replyToken = event.getReplyToken();
-
-    String userId = source.getUserId();
-
-    try {
-      TextMessage message;
-      CompletableFuture<UserProfileResponse> userProfileFuture;
-      UserProfileResponse userProfile;
-      if (source instanceof RoomSource) {
-        message = new TextMessage("這是RoomSource");
-        userProfileFuture = lineMessagingClient.getRoomMemberProfile(source.getSenderId(), userId);
-        userProfile = userProfileFuture.get();
-      } else if (source instanceof GroupSource) {
-        message = new TextMessage("這是GroupSource");
-        userProfileFuture = lineMessagingClient.getGroupMemberProfile(source.getSenderId(), userId);
-        userProfile = userProfileFuture.get();
-      } else {
-        message = new TextMessage("這是UserSource");
-        userProfileFuture = lineMessagingClient.getProfile(userId);
-        userProfile = userProfileFuture.get();
-      }
-      LOGGER.info("UserProfile={}", userProfile.getDisplayName());
-      LOGGER.info("UserProfileJson={}", JsonUtils.objToString(userProfile));
-      lineMessagingClient.pushMessage(new PushMessage(userId, message));
-    } catch (Exception e) {
-      LOGGER.info(LOG_RQ, event);
+      defaultMessage(event.getSource().getUserId(), String.join("\n", datas));
     }
   }
 
@@ -173,8 +127,16 @@ public class LineBotService extends AbstractService {
   }
 
   private CarouselTemplate getCarouselTemplate() {
-    List<CarouselColumn> columns = activeService.getProducts(true).stream()
-        .map(this::toCarouselColumn).collect(Collectors.toList());
+    String defaultImageUrl = "https://activity.liontravel.com/Images/Activity_Loading.jpg";
+    String defaultLionUrl = "https://www.liontravel.com/category/zh-tw/index";
+    List<CarouselColumn> columns = activeService.getProducts(true).stream().map(c -> {
+      // Carousel最多3個Action
+      Action action1 = new URIAction("詳細內容", getURI(c.getActiveUrl(), defaultLionUrl), null);
+      Action action2 = new PostbackAction("立即購買", "action=buy&item=" + c.getId(), null);
+      return new CarouselColumn(getURI(c.getImageUrl(), defaultImageUrl), c.getName(),
+          activeService.getActiveDesc(c), Arrays.asList(action1, action2));
+
+    }).collect(Collectors.toList());
     return new CarouselTemplate(columns);
   }
 
@@ -190,15 +152,15 @@ public class LineBotService extends AbstractService {
     }
   }
 
-  private CarouselColumn toCarouselColumn(Product product) {
-    // Carousel最多3個Actions
-    Action action1 = new URIAction("詳細內容", getURI(product.getActiveUrl(), DEFAULT_URL), null);
-    Action action2 = new PostbackAction("立即購買", product.getId(), null);
-    return new CarouselColumn(getURI(product.getImageUrl(), DEFAULT_IMG_URL), product.getName(),
-        activeService.getActiveDesc(product), Arrays.asList(action1, action2));
+  private void defaultMessage(String userID, String oriMessage) {
+    try {
+      lineMessagingClient.multicast(getErrorMulticast(userID));
+    } catch (Exception e) {
+      LOGGER.info(LOG_RQ, oriMessage);
+    }
   }
 
-  private void defaultMessage(Event event) {
+  private void defaultMessage(MessageEvent<TextMessageContent> event) {
     try {
       lineMessagingClient.multicast(getErrorMulticast(event.getSource().getUserId()));
     } catch (Exception e) {
@@ -210,7 +172,7 @@ public class LineBotService extends AbstractService {
     Set<String> user = new HashSet<>();
     user.add(userId);
 
-    String exMessage = "這個帳號沒有辦法對您剛才的訊息內容做出回覆。\n試試看送出 【最新優惠】 ，可以看到目前最新的優惠活動唷~ \n期待您下次的訊息內容！";
+    String exMessage = "這個帳號沒有辦法對您剛才的訊息內容做出回覆。\n試試看送出 【HI】、【YO】 ，可以看到目前最新的優惠活動唷~ \n期待您下次的訊息內容！";
     List<Message> message = new ArrayList<>();
     // https://devdocs.line.me/files/sticker_list.pdf
     message.add(new StickerMessage("2", "38"));
