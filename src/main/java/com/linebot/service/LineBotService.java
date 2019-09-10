@@ -140,7 +140,7 @@ public class LineBotService extends AbstractService {
         break;
       case NEW_ACTIVE:
         Message message =
-            new TemplateMessage(UserAction.NEW_ACTIVE.getSysReply(), getCarouselTemplate());
+            new TemplateMessage(UserAction.NEW_ACTIVE.getSysReply(), getProductCarouselTemplate());
         lineMessagingClient.pushMessage(new PushMessage(userId, message));
         break;
       case BUY_PRODUCT:
