@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.linebot.bean.OrderInfo;
 import com.linebot.bean.Product;
 import com.linebot.utils.JsonUtils;
 import com.linecorp.bot.model.Multicast;
@@ -57,6 +58,9 @@ public class LineBotService extends AbstractService {
   @Autowired
   private ActiveService activeService;
 
+  @Autowired
+  private OrderService orderService;
+
   @EventMapping
   public void handleDefaultMessageEvent(Event event) {
     LOGGER.info(LOG_RQ, event);
@@ -82,8 +86,15 @@ public class LineBotService extends AbstractService {
     try {
       switch (text.toUpperCase()) {
         case "我的訂單":
-          // lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getProductList()
-          // .stream().map(TextMessage::new).collect(Collectors.toList())));
+          List<OrderInfo> orderInfos = orderService.retrieveOrders(userId);
+          if (orderInfos.isEmpty()) {
+            lineMessagingClient.replyMessage(new ReplyMessage(event.getReplyToken(),
+                new TextMessage("目前沒有您的訂單唷，快輸入 【最新優惠】選購喜歡的商品吧~")));
+          } else {
+            lineMessagingClient.replyMessage(new ReplyMessage(event.getReplyToken(),
+                orderInfos.stream().map(orderInfo -> new TextMessage(orderInfo.getOrderNo()))
+                    .collect(Collectors.toList())));
+          }
           break;
         case "附近門市":
           // lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getProductList()
@@ -96,7 +107,7 @@ public class LineBotService extends AbstractService {
         default:
           if (text.contains("+")) {
             int item = Integer.parseInt(text.replace("+", ""));
-            sellItem(String.valueOf(item), event.getReplyToken(), event.getSource().getUserId());
+            sellItem(String.valueOf(item), event.getReplyToken(), userId);
           } else {
             defaultMessage(event);
           }
@@ -153,22 +164,28 @@ public class LineBotService extends AbstractService {
     }
   }
 
-  private void sellItem(String itemID, String replyToken, String userID)
+  private void sellItem(String itemId, String replyToken, String userId)
       throws InterruptedException, ExecutionException {
     String actName = "";
     try {
-      actName = activeService.sell(itemID);
+      // 扣量
+      Product product = activeService.sell(itemId);
+      actName = product.getName();
+
+      // 推送訊息
       lineMessagingClient
           .replyMessage(new ReplyMessage(replyToken, new TextMessage(actName + " 購買成功!"))).get();
-      activeService.addOrder(itemID, userID);
+
+      // 成立訂單
+      orderService.createOrder(userId, 1, product);
     } catch (Exception e) {
-      if ("Active Not Exist".equalsIgnoreCase(e.getMessage())) {
-        lineMessagingClient
-            .replyMessage(new ReplyMessage(replyToken, new TextMessage("很抱歉，您選購的商品不存在唷"))).get();
-      } else {
-        lineMessagingClient.replyMessage(new ReplyMessage(replyToken,
-            new TextMessage("很抱歉，您選購的商品" + actName + " 已銷售完畢囉!\n期待您的下次選購^_^"))).get();
+      String errMessage = "很抱歉，您選購的商品不存在唷";
+      if ("Sold Out".equalsIgnoreCase(e.getMessage())) {
+        errMessage = "很抱歉，您選購的【" + actName + "】 已銷售完畢!\n期待您下次選購^_^";
       }
+
+      lineMessagingClient.replyMessage(new ReplyMessage(replyToken, new TextMessage(errMessage)))
+          .get();
     }
   }
 
