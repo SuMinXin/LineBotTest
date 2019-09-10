@@ -1,12 +1,12 @@
 package com.linebot.service;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -31,7 +31,9 @@ public class ActiveService {
 
   private static Map<String, Product> productsMap = new HashMap<>();
 
-  private static List<Integer> exprireTime = new ArrayList<>(Arrays.asList(0, 10, 20, 30, 40, 50));
+  private static Integer exprireTime = 10;
+
+  private static long prevResetTime = 0;
 
   // ---------------------------- 依Message 回覆 ----------------------------
   // HI
@@ -64,6 +66,7 @@ public class ActiveService {
 
   // ---------------------------- 購買商品 ----------------------------
   public Product sell(String id) throws Exception {
+    readData();
     // 數量 -1
     lock.lock();
     Product product = null;
@@ -93,6 +96,7 @@ public class ActiveService {
   // ---------------------------- Product Function ----------------------------
   private void readData() {
     if (productsMap.isEmpty() || isExpire()) {
+      prevResetTime = System.currentTimeMillis();
       // https://docs.google.com/spreadsheets/d/1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s/edit#gid=0
       String range = SHEET_NAME + "A2:H";
       List<List<Object>> response =
@@ -109,13 +113,11 @@ public class ActiveService {
   }
 
   private boolean isExpire() {
-    if (LocalDateTime.now().getMinute() > exprireTime.get(0)) {
-      exprireTime.add(exprireTime.get(0));
-      exprireTime.remove(0);
+    long minutes = TimeUnit.MILLISECONDS.toMinutes(System.currentTimeMillis() - prevResetTime);
+    if (prevResetTime <= 0 || minutes > exprireTime) {
       return true;
-    } else {
-      return false;
     }
+    return false;
   }
 
   private Product toProduct(List<Object> object) {
