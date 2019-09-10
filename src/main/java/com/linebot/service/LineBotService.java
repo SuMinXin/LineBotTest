@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.linebot.bean.Product;
+import com.linebot.bean.UserAction;
 import com.linebot.utils.JsonUtils;
 import com.linecorp.bot.model.Multicast;
 import com.linecorp.bot.model.PushMessage;
@@ -80,26 +81,25 @@ public class LineBotService extends AbstractService {
     String text = event.getMessage().getText();
     String userId = event.getSource().getUserId();
     try {
-      switch (text.toUpperCase()) {
-        case "我的訂單":
+      switch (UserAction.fromMessage(text.toUpperCase())) {
+        case MY_ORDER:
           // lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getProductList()
           // .stream().map(TextMessage::new).collect(Collectors.toList())));
           break;
-        case "附近門市":
+        case NEAR_STORE:
           // lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getProductList()
           // .stream().map(TextMessage::new).collect(Collectors.toList())));
           break;
-        case "最新優惠":
-          Message message = new TemplateMessage("優惠活動來囉~~", getCarouselTemplate());
+        case NEW_ACTIVE:
+          Message message =
+              new TemplateMessage(UserAction.NEW_ACTIVE.getSysReply(), getCarouselTemplate());
           lineMessagingClient.pushMessage(new PushMessage(userId, message));
           break;
+        case BUY_PRODUCT:
+          int item = Integer.parseInt(text.replace(UserAction.BUY_PRODUCT.getMessage(), ""));
+          sellItem(String.valueOf(item), event.getReplyToken(), event.getSource().getUserId());
         default:
-          if (text.contains("+")) {
-            int item = Integer.parseInt(text.replace("+", ""));
-            sellItem(String.valueOf(item), event.getReplyToken(), event.getSource().getUserId());
-          } else {
-            defaultMessage(event);
-          }
+          defaultMessage(event);
           break;
       }
     } catch (Exception e) {
