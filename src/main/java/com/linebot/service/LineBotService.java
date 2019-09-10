@@ -91,7 +91,7 @@ public class LineBotService extends AbstractService {
           List<OrderInfo> orderInfos = orderService.retrieveOrders(userId);
           if (orderInfos.isEmpty()) {
             lineMessagingClient.replyMessage(new ReplyMessage(event.getReplyToken(),
-                new TextMessage("目前沒有您的訂單唷，快輸入 【最新優惠】選購喜歡的商品吧~")));
+                new TextMessage(UserAction.MY_ORDER.getSysReply())));
           } else {
             // 一次最多5筆TextMessage
             if (orderInfos.size() > 5) {
@@ -235,11 +235,10 @@ public class LineBotService extends AbstractService {
     Set<String> user = new HashSet<>();
     user.add(userId);
 
-    String exMessage = "這個帳號沒有辦法對您剛才的訊息內容做出回覆。\n試試看送出 【最新優惠】 ，可以看到目前最新的優惠活動唷~ \n期待您下次的訊息內容！";
     List<Message> message = new ArrayList<>();
     // https://devdocs.line.me/files/sticker_list.pdf
     message.add(new StickerMessage("2", "38"));
-    message.add(new TextMessage(exMessage));
+    message.add(new TextMessage(UserAction.UNKNOW.getSysReply()));
 
     return new Multicast(user, message);
   }
