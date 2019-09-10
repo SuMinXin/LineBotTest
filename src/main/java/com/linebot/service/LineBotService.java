@@ -2,6 +2,7 @@ package com.linebot.service;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -29,12 +30,11 @@ import com.linecorp.bot.model.action.PostbackAction;
 import com.linecorp.bot.model.action.URIAction;
 import com.linecorp.bot.model.event.Event;
 import com.linecorp.bot.model.event.JoinEvent;
+import com.linecorp.bot.model.event.MemberJoinedEvent;
 import com.linecorp.bot.model.event.MessageEvent;
 import com.linecorp.bot.model.event.PostbackEvent;
 import com.linecorp.bot.model.event.message.StickerMessageContent;
 import com.linecorp.bot.model.event.message.TextMessageContent;
-import com.linecorp.bot.model.event.source.GroupSource;
-import com.linecorp.bot.model.event.source.RoomSource;
 import com.linecorp.bot.model.event.source.Source;
 import com.linecorp.bot.model.message.Message;
 import com.linecorp.bot.model.message.StickerMessage;
@@ -157,26 +157,56 @@ public class LineBotService extends AbstractService {
     Source source = event.getSource();
     String userId = source.getUserId();
 
+    String replyToken = event.getReplyToken();
     try {
-      TextMessage message;
+
       CompletableFuture<UserProfileResponse> userProfileFuture;
       UserProfileResponse userProfile;
-      if (source instanceof RoomSource) {
-        message = new TextMessage("這是RoomSource");
-        userProfileFuture = lineMessagingClient.getRoomMemberProfile(source.getSenderId(), userId);
-        userProfile = userProfileFuture.get();
-      } else if (source instanceof GroupSource) {
-        message = new TextMessage("這是GroupSource");
-        userProfileFuture = lineMessagingClient.getGroupMemberProfile(source.getSenderId(), userId);
-        userProfile = userProfileFuture.get();
+
+      if (replyToken != null) {
+        TextMessage message =
+            new TextMessage("大家好，我是line bot，現在時間=" + LocalDateTime.now().toString());
+        lineMessagingClient.replyMessage(new ReplyMessage(replyToken, message));
       } else {
-        message = new TextMessage("這是UserSource");
-        userProfileFuture = lineMessagingClient.getProfile(userId);
-        userProfile = userProfileFuture.get();
+        userProfileFuture = lineMessagingClient.getGroupMemberProfile(source.getSenderId(), userId);
+        if (userProfileFuture == null) {
+          userProfileFuture =
+              lineMessagingClient.getRoomMemberProfile(source.getSenderId(), userId);
+        }
+
+        if (userProfileFuture != null) {
+          userProfile = userProfileFuture.get();
+
+          TextMessage message =
+              new TextMessage("source=" + JsonUtils.objToString(source) + ", username="
+                  + userProfile.getDisplayName() + ", user=" + JsonUtils.objToString(userProfile));
+          lineMessagingClient.replyMessage(new ReplyMessage(replyToken, message));
+        }
       }
-      LOGGER.info("UserProfile={}", userProfile.getDisplayName());
-      LOGGER.info("UserProfileJson={}", JsonUtils.objToString(userProfile));
-      lineMessagingClient.pushMessage(new PushMessage(userId, message));
+    } catch (Exception e) {
+      LOGGER.info(LOG_RQ, event);
+    }
+  }
+
+  @EventMapping
+  public void handleMemberJoinedEvent(MemberJoinedEvent event) {
+    List<Source> members = event.getJoined().getMembers();
+
+    String replyToken = event.getReplyToken();
+    try {
+      if (replyToken != null) {
+        List<String> names = new ArrayList<>();
+        for (Source member : members) {
+          UserProfileResponse userProfile = lineMessagingClient
+              .getGroupMemberProfile(member.getSenderId(), member.getUserId()).get();
+          names.add(userProfile.getDisplayName());
+        }
+        if (!names.isEmpty()) {
+          TextMessage message =
+              new TextMessage(Arrays.toString(names.toArray()) + "好，我是line bot，有什麼我可以服務的嗎?");
+          lineMessagingClient.replyMessage(new ReplyMessage(replyToken, message));
+        }
+      }
     } catch (Exception e) {
       LOGGER.info(LOG_RQ, event);
     }
