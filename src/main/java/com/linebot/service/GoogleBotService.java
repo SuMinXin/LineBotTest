@@ -123,18 +123,22 @@ public class GoogleBotService extends AbstractService {
 
     try {
       TextMessage message;
-      CompletableFuture<UserProfileResponse> userProfile;
+      CompletableFuture<UserProfileResponse> userProfileFuture;
+      UserProfileResponse userProfile;
       if (source instanceof RoomSource) {
         message = new TextMessage("這是RoomSource");
-        userProfile = lineMessagingClient.getRoomMemberProfile(source.getSenderId(), userId);
+        userProfileFuture = lineMessagingClient.getRoomMemberProfile(source.getSenderId(), userId);
+        userProfile = userProfileFuture.get();
       } else if (source instanceof GroupSource) {
         message = new TextMessage("這是GroupSource");
-        userProfile = lineMessagingClient.getGroupMemberProfile(source.getSenderId(), userId);
+        userProfileFuture = lineMessagingClient.getGroupMemberProfile(source.getSenderId(), userId);
+        userProfile = userProfileFuture.get();
       } else {
         message = new TextMessage("這是UserSource");
-        userProfile = lineMessagingClient.getProfile(userId);
+        userProfileFuture = lineMessagingClient.getProfile(userId);
+        userProfile = userProfileFuture.get();
       }
-      LOGGER.info("UserProfile={}", userProfile);
+      LOGGER.info("UserProfile={}", userProfile.getDisplayName());
       LOGGER.info("UserProfileJson={}", JsonUtils.objToString(userProfile));
       lineMessagingClient.pushMessage(new PushMessage(userId, message));
     } catch (Exception e) {
