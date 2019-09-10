@@ -167,22 +167,22 @@ public class LineBotService extends AbstractService {
 
   private void sellItem(String itemId, String replyToken, String userId)
       throws InterruptedException, ExecutionException {
-    String actName = "";
     try {
       // 扣量
       Product product = activeService.sell(itemId);
-      actName = product.getName();
 
       // 推送訊息
       lineMessagingClient
-          .replyMessage(new ReplyMessage(replyToken, new TextMessage(actName + " 購買成功!"))).get();
+          .replyMessage(new ReplyMessage(replyToken, new TextMessage(product.getName() + " 購買成功!")))
+          .get();
 
       // 成立訂單
       orderService.createOrder(userId, 1, product);
     } catch (Exception e) {
+      Product product = activeService.getProduct(itemId);
       String errMessage = "很抱歉，您選購的商品不存在唷";
-      if ("Sold Out".equalsIgnoreCase(e.getMessage())) {
-        errMessage = "很抱歉，您選購的【" + actName + "】 已銷售完畢!\n期待您下次選購^_^";
+      if (product != null && "Sold Out".equalsIgnoreCase(e.getMessage())) {
+        errMessage = "很抱歉，您選購的【" + product.getName() + "】 已銷售完畢!\n期待您下次選購^_^";
       }
 
       lineMessagingClient.replyMessage(new ReplyMessage(replyToken, new TextMessage(errMessage)))
