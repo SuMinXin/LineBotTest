@@ -15,8 +15,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.linebot.bean.OrderInfo;
+import com.linebot.bean.PostBack;
 import com.linebot.bean.Product;
-import com.linebot.bean.UserAction;
+import com.linebot.enums.CarouselAction;
+import com.linebot.enums.PostBackAction;
+import com.linebot.enums.UserAction;
 import com.linebot.utils.JsonUtils;
 import com.linecorp.bot.model.Multicast;
 import com.linecorp.bot.model.PushMessage;
@@ -91,16 +94,15 @@ public class LineBotService extends AbstractService {
           List<OrderInfo> orderInfos = orderService.retrieveOrders(userId);
           if (orderInfos.isEmpty()) {
             lineMessagingClient.replyMessage(new ReplyMessage(event.getReplyToken(),
-                new TextMessage(UserAction.MY_ORDER.getSysReply())));
+                new TextMessage(UserAction.MY_ORDER.getDefReply())));
           } else {
             // 一次最多5筆TextMessage
             if (orderInfos.size() > 5) {
               orderInfos = orderInfos.subList(0, 5);
             }
-
-            lineMessagingClient.replyMessage(new ReplyMessage(event.getReplyToken(),
-                orderInfos.stream().map(orderInfo -> new TextMessage(orderInfo.getOrderNo()))
-                    .collect(Collectors.toList())));
+            Message message = new TemplateMessage(UserAction.MY_ORDER.getSysReply(),
+                getOrderCarouselTemplate(orderInfos));
+            lineMessagingClient.pushMessage(new PushMessage(userId, message));
           }
           break;
         case NEAR_STORE:
@@ -108,13 +110,14 @@ public class LineBotService extends AbstractService {
           // .stream().map(TextMessage::new).collect(Collectors.toList())));
           break;
         case NEW_ACTIVE:
-          Message message =
-              new TemplateMessage(UserAction.NEW_ACTIVE.getSysReply(), getCarouselTemplate());
+          Message message = new TemplateMessage(UserAction.NEW_ACTIVE.getSysReply(),
+              getProductCarouselTemplate());
           lineMessagingClient.pushMessage(new PushMessage(userId, message));
           break;
         case BUY_PRODUCT:
           int item = Integer.parseInt(text.replace(UserAction.BUY_PRODUCT.getMessage(), ""));
           sellItem(String.valueOf(item), event.getReplyToken(), event.getSource().getUserId());
+          break;
         default:
           defaultMessage(event);
           break;
@@ -129,10 +132,21 @@ public class LineBotService extends AbstractService {
   public void handlePostBackEvent(PostbackEvent event)
       throws InterruptedException, ExecutionException {
     LOGGER.info(LOG_RQ, event);
-
     try {
-      sellItem(event.getPostbackContent().getData(), event.getReplyToken(),
-          event.getSource().getUserId());
+      PostBack postBackMsg =
+          JsonUtils.fromJson(event.getPostbackContent().getData(), PostBack.class);
+      switch (postBackMsg.getType()) {
+        case BUY:
+          sellItem(postBackMsg.getMessage(), event.getReplyToken(), event.getSource().getUserId());
+          break;
+        case ORDER_DETAIL:
+          orderDetail(postBackMsg.getMessage(), event.getReplyToken(),
+              event.getSource().getUserId());
+          break;
+        default:
+          defaultMessage(event);
+          break;
+      }
     } catch (Exception e) {
       defaultMessage(event);
     }
@@ -175,9 +189,8 @@ public class LineBotService extends AbstractService {
       Product product = activeService.sell(itemId);
 
       // 推送訊息
-      lineMessagingClient
-          .replyMessage(new ReplyMessage(replyToken, new TextMessage(product.getName() + " 購買成功!")))
-          .get();
+      lineMessagingClient.replyMessage(new ReplyMessage(replyToken,
+          new TextMessage(product.getName() + UserAction.BUY_PRODUCT.getSysReply()))).get();
 
       // 成立訂單
       orderService.createOrder(userId, 1, product);
@@ -185,7 +198,7 @@ public class LineBotService extends AbstractService {
       Product product = activeService.getProduct(itemId);
       String errMessage = "很抱歉，您選購的商品不存在唷";
       if (product != null && "Sold Out".equalsIgnoreCase(e.getMessage())) {
-        errMessage = "很抱歉，您選購的【" + product.getName() + "】 已銷售完畢!\n期待您下次選購^_^";
+        errMessage = UserAction.BUY_PRODUCT.getDefReply().replace("{NAME}", product.getName());
       }
 
       lineMessagingClient.replyMessage(new ReplyMessage(replyToken, new TextMessage(errMessage)))
@@ -193,10 +206,38 @@ public class LineBotService extends AbstractService {
     }
   }
 
-  private CarouselTemplate getCarouselTemplate() {
+  private void orderDetail(String ordrNo, String replyToken, String userID) {
+    List<OrderInfo> orderInfos = orderService.retrieveOrders(userID);
+    OrderInfo order = orderInfos.stream().filter(ordr -> ordrNo.equals(ordr.getOrderNo()))
+        .findFirst().orElse(null);
+    if (orderInfos.isEmpty()) {
+      lineMessagingClient.replyMessage(
+          new ReplyMessage(replyToken, new TextMessage(UserAction.ORDER_DETAIL.getDefReply())));
+    } else {
+      Product product = activeService.getProducts(false).stream()
+          .filter(prod -> prod.getId().equals(order.getItemId())).findFirst().orElse(new Product());
+      String orerDetail = UserAction.ORDER_DETAIL.getSysReply().replace("{NO}", order.getOrderNo())
+          .replace("{PRODUCT}", product.getName())
+          .replace("{DESC}", product.getDesc().concat("\\n").concat(product.getActiveUrl()))
+          .replace("{AMOUNT}", String.valueOf(order.getPaxNumber()))
+          .replace("{PRICE}", String.valueOf(order.getPrice()))
+          .replace("{DATE}", order.getOrderNo());
+      lineMessagingClient.replyMessage(new ReplyMessage(replyToken, new TextMessage(orerDetail)));
+    }
+  }
+
+  private CarouselTemplate getProductCarouselTemplate() {
     // 一次最多10筆CarouselColumn
     List<CarouselColumn> columns = activeService.getProducts(true).stream()
         .map(this::toCarouselColumn).collect(Collectors.toList());
+    return new CarouselTemplate(columns);
+  }
+
+  private CarouselTemplate getOrderCarouselTemplate(List<OrderInfo> orderInfos) {
+    // 一次最多10筆CarouselColumn
+    List<Product> products = activeService.getProducts(false);
+    List<CarouselColumn> columns = orderInfos.stream().map(ordr -> toCarouselColumn(ordr, products))
+        .collect(Collectors.toList());
     return new CarouselTemplate(columns);
   }
 
@@ -214,10 +255,32 @@ public class LineBotService extends AbstractService {
 
   private CarouselColumn toCarouselColumn(Product product) {
     // Carousel最多3個Actions
-    Action action1 = new URIAction("詳細內容", getURI(product.getActiveUrl(), DEFAULT_URL), null);
-    Action action2 = new PostbackAction("立即購買", product.getId(), null);
+    Action action1 = new URIAction(CarouselAction.PRODUCT.getAction1(),
+        getURI(product.getActiveUrl(), DEFAULT_URL), null);
+    Action action2 = new PostbackAction(CarouselAction.PRODUCT.getAction2(),
+        setPostBack(PostBackAction.BUY, product.getId()), null);
     return new CarouselColumn(getURI(product.getImageUrl(), DEFAULT_IMG_URL), product.getName(),
         activeService.getActiveDesc(product), Arrays.asList(action1, action2));
+  }
+
+  private CarouselColumn toCarouselColumn(OrderInfo order, List<Product> products) {
+    // Carousel最多3個Actions
+    Product product = products.stream().filter(prod -> prod.getId().equals(order.getItemId()))
+        .findFirst().orElse(new Product());
+    String payUrl = "https://member.liontravel.com/order/myorderlist";
+    Action action1 = new PostbackAction(CarouselAction.ORDER.getAction1(),
+        setPostBack(PostBackAction.ORDER_DETAIL, order.getOrderNo()), null);
+    Action action2 = new URIAction(CarouselAction.PRODUCT.getAction2(),
+        getURI("https://member.liontravel.com/order/myorderlist", payUrl), null);
+    return new CarouselColumn(getURI(product.getImageUrl(), DEFAULT_IMG_URL), product.getName(),
+        activeService.getActiveDesc(product), Arrays.asList(action1, action2));
+  }
+
+  private String setPostBack(PostBackAction type, String msg) {
+    PostBack orderMsg = new PostBack();
+    orderMsg.setType(PostBackAction.ORDER_DETAIL);
+    orderMsg.setMessage(msg);
+    return JsonUtils.objToString(orderMsg);
   }
 
   private void defaultMessage(Event event) {
@@ -235,9 +298,8 @@ public class LineBotService extends AbstractService {
     List<Message> message = new ArrayList<>();
     // https://devdocs.line.me/files/sticker_list.pdf
     message.add(new StickerMessage("2", "38"));
-    message.add(new TextMessage(UserAction.UNKNOW.getSysReply()));
+    message.add(new TextMessage(UserAction.UNKNOW.getDefReply()));
 
     return new Multicast(user, message);
   }
-
 }
