@@ -148,21 +148,24 @@ public class LineBotService extends AbstractService {
       CompletableFuture<UserProfileResponse> userProfileFuture;
       UserProfileResponse userProfile;
       if (source instanceof RoomSource) {
-        message = new TextMessage("這是RoomSource");
         userProfileFuture = lineMessagingClient.getRoomMemberProfile(source.getSenderId(), userId);
         userProfile = userProfileFuture.get();
+
+        message = new TextMessage("這是RoomSource + Json=" + JsonUtils.objToString(userProfile));
       } else if (source instanceof GroupSource) {
-        message = new TextMessage("這是GroupSource");
         userProfileFuture = lineMessagingClient.getGroupMemberProfile(source.getSenderId(), userId);
         userProfile = userProfileFuture.get();
+
+        message = new TextMessage("這是GroupSource + Json=" + JsonUtils.objToString(userProfile));
       } else {
-        message = new TextMessage("這是UserSource");
         userProfileFuture = lineMessagingClient.getProfile(userId);
         userProfile = userProfileFuture.get();
+
+        message = new TextMessage("這是UserSource + Json=" + JsonUtils.objToString(userProfile));
       }
       LOGGER.info("UserProfile={}", userProfile.getDisplayName());
       LOGGER.info("UserProfileJson={}", JsonUtils.objToString(userProfile));
-      lineMessagingClient.pushMessage(new PushMessage(userId, message));
+      lineMessagingClient.pushMessage(new PushMessage(source.getSenderId(), message));
     } catch (Exception e) {
       LOGGER.info(LOG_RQ, event);
     }
