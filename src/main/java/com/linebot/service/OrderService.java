@@ -1,20 +1,24 @@
 package com.linebot.service;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
+import com.google.common.annotations.VisibleForTesting;
 import com.linebot.bean.LionOrderRQ;
 import com.linebot.bean.LionOrderRS;
+import com.linebot.bean.OrderInfo;
+import com.linebot.bean.Product;
 import com.linebot.client.LionApiClient;
 import com.linebot.client.RedisClient;
 import com.linebot.utils.JsonUtils;
+import com.linebot.utils.OrderInfoConverter;
 
 @Component
 public class OrderService {
@@ -29,51 +33,63 @@ public class OrderService {
   /**
    * 顧客下單
    * 
-   * @param itemID 商品ID
+   * @param itemId 商品ID
    * @param paxNum 旅客人數(暫未使用多人)
    */
   @Async("threadPoolTaskExecutor")
-  public void addPax(String itemID, String userID, Integer paxNum, BigDecimal price) {
-    LocalDateTime now = LocalDateTime.now();
-    String year = String.valueOf(now.getYear());
-    DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyyMMddHH:mm:ss");
-    String tOrdr = df.format(now);
+  public void createOrder(String userId, Integer paxNum, Product product) {
+    // 轉換訂購物件
+    OrderInfo orderInfo = OrderInfoConverter.convert(userId, paxNum, product);
+
+    // 取得訂單號
+    DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MMdd-HHmmss");
+    String orderNo = df.format(orderInfo.getOrderDate());
+
     // 沒權限，拿不到單號
+    // String year = String.valueOf(orderInfo.getOrderDate().getYear());
     // Integer ordr = 0;
     // LionOrderRS lionOrder = getOrder(year);
     // if (lionOrder != null) {
     // ordr = lionOrder.getIsno_seq();
     // }
-    // setRedisValue
-    RedisValue value = new RedisValue();
-    value.setItemID(itemID);
-    value.setOrderDate(now);
-    value.setPaxNumber(paxNum);
-    value.setPrice(price);
-    value.setUserID(userID);
-    value.setOrderNo(year.concat("-").concat(tOrdr));
-    redisClient.saveHashToken(getHashKey(itemID), userID.concat(":").concat(tOrdr),
-        JsonUtils.objToString(value));
+
+    orderInfo.setOrderNo(orderNo);
+
+    // 存入Redis
+    redisClient.saveHashToken(getHashKey(product.getId()), userId.concat(":").concat(orderNo),
+        JsonUtils.objToString(orderInfo));
   }
 
   /**
    * 活動結算
    * 
-   * @param itemID 活動代碼
+   * @param itemId 活動代碼
    */
   @Async("threadPoolTaskExecutor")
-  public void activeFinished(String itemID) {
-    List<String> paxDetail = redisClient.retrieveHashToken(getHashKey(itemID));
+  public void transferOrders(String itemId) {
+    List<String> paxDetail = redisClient.retrieveHashToken(getHashKey(itemId));
     if (!CollectionUtils.isEmpty(paxDetail)) {
       for (String order : paxDetail) {
-        RedisValue ordr = JsonUtils.fromJson(order, RedisValue.class);
-        redisClient.saveHashToken("Orders:".concat(ordr.getUserID()), ordr.getOrderNo(),
+        OrderInfo ordr = JsonUtils.fromJson(order, OrderInfo.class);
+        redisClient.saveHashToken("Orders:".concat(ordr.getUserId()), ordr.getOrderNo(),
             JsonUtils.objToString(ordr));
       }
     }
   }
 
+  @VisibleForTesting
+  public List<OrderInfo> retrieveOrders(String userId) {
+    String key = "Orders:".concat(userId);
+    List<String> orderList = redisClient.retrieveHashToken(key);
+    if (CollectionUtils.isEmpty(orderList)) {
+      return Collections.emptyList();
+    }
+    return orderList.stream().map(order -> JsonUtils.fromJson(order, OrderInfo.class))
+        .collect(Collectors.toList());
+  }
+
   // 取單號
+  @SuppressWarnings("unused")
   private LionOrderRS getOrder(String year) {
     LionOrderRQ req = new LionOrderRQ();
     req.setIsno_year(year);
@@ -95,60 +111,4 @@ public class OrderService {
     return result.toString();
   }
 
-  static class RedisValue {
-    private LocalDateTime orderDate;
-    private String orderNo;
-    private Integer paxNumber;
-    private BigDecimal price;
-    private String itemID;
-    private String userID;
-
-    public LocalDateTime getOrderDate() {
-      return orderDate;
-    }
-
-    public void setOrderDate(LocalDateTime orderDate) {
-      this.orderDate = orderDate;
-    }
-
-    public String getOrderNo() {
-      return orderNo;
-    }
-
-    public void setOrderNo(String orderNo) {
-      this.orderNo = orderNo;
-    }
-
-    public Integer getPaxNumber() {
-      return paxNumber;
-    }
-
-    public void setPaxNumber(Integer paxNumber) {
-      this.paxNumber = paxNumber;
-    }
-
-    public BigDecimal getPrice() {
-      return price;
-    }
-
-    public void setPrice(BigDecimal price) {
-      this.price = price;
-    }
-
-    public String getItemID() {
-      return itemID;
-    }
-
-    public void setItemID(String itemID) {
-      this.itemID = itemID;
-    }
-
-    public String getUserID() {
-      return userID;
-    }
-
-    public void setUserID(String userID) {
-      this.userID = userID;
-    }
-  }
 }

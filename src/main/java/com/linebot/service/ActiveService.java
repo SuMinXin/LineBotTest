@@ -65,32 +65,32 @@ public class ActiveService {
   }
 
   // ---------------------------- 購買商品 ----------------------------
-  public String sell(String id) throws Exception {
+  public Product sell(String id) throws Exception {
     readData();
     // 數量 -1
     lock.lock();
-    String response = null;
+    Product product = null;
     try {
-      Product action = productsMap.get(id);
-      if (action == null) {
+      product = productsMap.get(id);
+      if (product == null) {
         throw new Exception("Active Not Exist");
       }
-      response = action.getName();
-      if (action.getAmount() > 0) {
-        action.setAmount(action.getAmount() - 1);
+      if (product.getAmount() > 0) {
+        product.setAmount(product.getAmount() - 1);
         updateProduct(id);
       } else {
-        orderService.activeFinished(id); // 結算
+        // 結算
+        orderService.transferOrders(id);
         throw new Exception("Sold Out");
       }
     } finally {
       lock.unlock();
     }
-    return response;
+    return product;
   }
 
-  public void addOrder(String itemID, String userID) {
-    orderService.addPax(itemID, userID, 1, productsMap.get(itemID).getPrice());
+  public Product getProduct(String itemId) {
+    return productsMap.get(itemId);
   }
 
   // ---------------------------- Product Function ----------------------------
