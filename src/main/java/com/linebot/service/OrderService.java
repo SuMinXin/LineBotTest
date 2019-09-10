@@ -2,12 +2,7 @@ package com.linebot.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +28,7 @@ public class OrderService {
 	private static final Logger LOGGER = LoggerFactory.getLogger(OrderService.class);
 
 	/**
+	 * 顧客下單
 	 * 
 	 * @param itemID 商品ID
 	 * @param paxNum 旅客人數(暫未使用多人)
@@ -58,27 +54,21 @@ public class OrderService {
 				JsonUtils.objToString(value));
 	}
 
+	/**
+	 * 活動結算
+	 * 
+	 * @param itemID 活動代碼
+	 */
 	@Async("threadPoolTaskExecutor")
 	public void activeFinished(String itemID) {
 		List<String> paxDetail = redisClient.retrieveHashToken(getHashKey(itemID));
 		if (!CollectionUtils.isEmpty(paxDetail)) {
-			/*
-			 * Map<String, Set<String>> map2 =
-			 * paxDetail.stream().collect(Collectors.groupingBy(RedisValue::getUserID,
-			 * Collectors.mapping(pax -> pax.getOrderNo(), Collectors.toSet())));
-			 */
-			Map<String, List<RedisValue>> map = new HashMap<>();
 			for (String order : paxDetail) {
 				RedisValue ordr = JsonUtils.fromJson(order, RedisValue.class);
-
-				if (map.containsKey(ordr.getUserID())) {
-					map.get(ordr.getUserID()).add(ordr);
-				} else {
-					map.put(ordr.getUserID(), Arrays.asList(ordr));
-				}
+				redisClient.saveHashToken("Orders:".concat(ordr.getUserID()), ordr.getOrderNo(),
+						JsonUtils.objToString(ordr));
 			}
 		}
-
 	}
 
 	// 取單號
@@ -98,13 +88,12 @@ public class OrderService {
 	private String getHashKey(String itemID) {
 		StringBuilder result = new StringBuilder();
 		result.append("Promotion");
-		result.append(itemID);
 		result.append(":");
-		result.append("");
+		result.append(itemID);
 		return result.toString();
 	}
 
-	class RedisValue {
+	static class RedisValue {
 		private LocalDateTime orderDate;
 		private String orderNo;
 		private Integer paxNumber;

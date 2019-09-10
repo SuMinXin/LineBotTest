@@ -60,7 +60,6 @@ public class ActiveService {
 
 	// ---------------------------- 購買商品 ----------------------------
 	public String sell(String id) throws Exception {
-		getProducts();
 		// 數量 -1
 		lock.lock();
 		String response = null;
@@ -86,9 +85,10 @@ public class ActiveService {
 		orderService.addPax(itemID, userID, 1, productsMap.get(itemID).getPrice());
 	}
 
+	// 活動結算
 	public void activeFinished(String itemID) {
 		orderService.activeFinished(itemID);
-		// productsMap.remove(itemID);
+		productsMap.remove(itemID);
 	}
 
 	// ---------------------------- Product Function ----------------------------
