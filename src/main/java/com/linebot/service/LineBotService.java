@@ -81,6 +81,7 @@ public class LineBotService extends AbstractService {
 
   @EventMapping
   public void handleTextMessageEvent(MessageEvent<TextMessageContent> event) {
+    LOGGER.info(LOG_RQ, event);
     String text = event.getMessage().getText();
     String userId = event.getSource().getUserId();
     try {
