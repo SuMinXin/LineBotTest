@@ -92,6 +92,11 @@ public class LineBotService extends AbstractService {
             lineMessagingClient.replyMessage(new ReplyMessage(event.getReplyToken(),
                 new TextMessage("目前沒有您的訂單唷，快輸入 【最新優惠】選購喜歡的商品吧~")));
           } else {
+            // 一次最多5筆TextMessage
+            if (orderInfos.size() > 5) {
+              orderInfos = orderInfos.subList(0, 5);
+            }
+
             lineMessagingClient.replyMessage(new ReplyMessage(event.getReplyToken(),
                 orderInfos.stream().map(orderInfo -> new TextMessage(orderInfo.getOrderNo()))
                     .collect(Collectors.toList())));
@@ -191,6 +196,7 @@ public class LineBotService extends AbstractService {
   }
 
   private CarouselTemplate getCarouselTemplate() {
+    // 一次最多10筆CarouselColumn
     List<CarouselColumn> columns = activeService.getProducts(true).stream()
         .map(this::toCarouselColumn).collect(Collectors.toList());
     return new CarouselTemplate(columns);
