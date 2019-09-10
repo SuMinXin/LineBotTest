@@ -11,7 +11,7 @@ public class SignatureTest {
 
 	@Test
 	public void createSignatureTest() throws Exception {
-		String channelSecret = "b98ec764f6b609527ae34446d4e6a1cf";
+		String channelSecret = "1efd9ec85bf96834030d0fd63f0e1424";
 		// Request body string
 		String httpRequestBody = "{\"events\":[{\"type\":\"message\",\"replyToken\":\"c9993dced4994005b6aad85ec96432ae\",\"source\":{\"userId\":\"Udbb24468127d89d1b43f54fb60517669\",\"type\":\"user\"},\"timestamp\":1567481188463,\"message\":{\"type\":\"text\",\"id\":\"10521461786656\",\"text\":\"+1\"}}],\"destination\":\"Ua73de9ca23aa0664b9f6b99f4c55796d\"}";
 		SecretKeySpec key = new SecretKeySpec(channelSecret.getBytes(), "HmacSHA256");
