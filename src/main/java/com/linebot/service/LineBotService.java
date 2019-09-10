@@ -81,11 +81,15 @@ public class LineBotService extends AbstractService {
     String userId = event.getSource().getUserId();
     try {
       switch (text.toUpperCase()) {
-        case "HI":
-          lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getProductList()
-              .stream().map(TextMessage::new).collect(Collectors.toList())));
+        case "我的訂單":
+          // lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getProductList()
+          // .stream().map(TextMessage::new).collect(Collectors.toList())));
           break;
-        case "YO":
+        case "附近門市":
+          // lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getProductList()
+          // .stream().map(TextMessage::new).collect(Collectors.toList())));
+          break;
+        case "最新優惠":
           Message message = new TemplateMessage("優惠活動來囉~~", getCarouselTemplate());
           lineMessagingClient.pushMessage(new PushMessage(userId, message));
           break;
@@ -169,8 +173,8 @@ public class LineBotService extends AbstractService {
   }
 
   private CarouselTemplate getCarouselTemplate() {
-    List<CarouselColumn> columns = activeService.getProducts().stream().map(this::toCarouselColumn)
-        .collect(Collectors.toList());
+    List<CarouselColumn> columns = activeService.getProducts(true).stream()
+        .map(this::toCarouselColumn).collect(Collectors.toList());
     return new CarouselTemplate(columns);
   }
 
@@ -206,7 +210,7 @@ public class LineBotService extends AbstractService {
     Set<String> user = new HashSet<>();
     user.add(userId);
 
-    String exMessage = "這個帳號沒有辦法對您剛才的訊息內容做出回覆。\n試試看送出 【HI】、【YO】 ，可以看到目前最新的優惠活動唷~ \n期待您下次的訊息內容！";
+    String exMessage = "這個帳號沒有辦法對您剛才的訊息內容做出回覆。\n試試看送出 【最新優惠】 ，可以看到目前最新的優惠活動唷~ \n期待您下次的訊息內容！";
     List<Message> message = new ArrayList<>();
     // https://devdocs.line.me/files/sticker_list.pdf
     message.add(new StickerMessage("2", "38"));
