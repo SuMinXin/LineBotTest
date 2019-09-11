@@ -128,10 +128,9 @@ public class LineBotService extends AbstractService {
           if (orderInfos.size() > 5) {
             orderInfos = orderInfos.subList(0, 5);
           }
-
-          lineMessagingClient.replyMessage(new ReplyMessage(replyToken,
-              orderInfos.stream().map(orderInfo -> new TextMessage(orderInfo.getOrderNo()))
-                  .collect(Collectors.toList())));
+          Message message = new TemplateMessage(UserAction.MY_ORDER.getSysReply(),
+              getOrderCarouselTemplate(orderInfos));
+          lineMessagingClient.pushMessage(new PushMessage(userId, message));
         }
         break;
       case NEAR_STORE:
@@ -265,19 +264,26 @@ public class LineBotService extends AbstractService {
     List<OrderInfo> orderInfos = orderService.retrieveOrders(userID);
     OrderInfo order = orderInfos.stream().filter(ordr -> ordrNo.equals(ordr.getOrderNo()))
         .findFirst().orElse(null);
-    if (orderInfos.isEmpty()) {
+    try {
+      if (orderInfos.isEmpty()) {
+        lineMessagingClient.replyMessage(
+            new ReplyMessage(replyToken, new TextMessage(UserAction.ORDER_DETAIL.getDefReply())));
+      } else {
+        Product product = activeService.getProducts(false).stream()
+            .filter(prod -> prod.getId().equals(order.getItemId())).findFirst()
+            .orElse(new Product());
+        String orerDetail = UserAction.ORDER_DETAIL.getSysReply()
+            .replace("{NO}", order.getOrderNo()).replace("{PRODUCT}", product.getName())
+            .replace("{DESC}", product.getDesc().concat("\\n").concat(product.getActiveUrl()))
+            .replace("{AMOUNT}", String.valueOf(order.getPaxNumber()))
+            .replace("{PRICE}", String.valueOf(order.getPrice()))
+            .replace("{DATE}", order.getOrderNo());
+        lineMessagingClient.replyMessage(new ReplyMessage(replyToken, new TextMessage(orerDetail)));
+      }
+    } catch (Exception e) {
+      LOGGER.error("Order Detail:{}", ordrNo, e);
       lineMessagingClient.replyMessage(
           new ReplyMessage(replyToken, new TextMessage(UserAction.ORDER_DETAIL.getDefReply())));
-    } else {
-      Product product = activeService.getProducts(false).stream()
-          .filter(prod -> prod.getId().equals(order.getItemId())).findFirst().orElse(new Product());
-      String orerDetail = UserAction.ORDER_DETAIL.getSysReply().replace("{NO}", order.getOrderNo())
-          .replace("{PRODUCT}", product.getName())
-          .replace("{DESC}", product.getDesc().concat("\\n").concat(product.getActiveUrl()))
-          .replace("{AMOUNT}", String.valueOf(order.getPaxNumber()))
-          .replace("{PRICE}", String.valueOf(order.getPrice()))
-          .replace("{DATE}", order.getOrderNo());
-      lineMessagingClient.replyMessage(new ReplyMessage(replyToken, new TextMessage(orerDetail)));
     }
   }
 
