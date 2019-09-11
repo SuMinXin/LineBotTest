@@ -45,6 +45,7 @@ import com.linecorp.bot.model.message.TextMessage;
 import com.linecorp.bot.model.message.template.CarouselColumn;
 import com.linecorp.bot.model.message.template.CarouselTemplate;
 import com.linecorp.bot.model.profile.UserProfileResponse;
+import com.linecorp.bot.model.response.BotApiResponse;
 import com.linecorp.bot.spring.boot.annotation.EventMapping;
 import com.linecorp.bot.spring.boot.annotation.LineMessageHandler;
 
@@ -110,15 +111,28 @@ public class LineBotService extends AbstractService {
     String userId = event.getSource().getUserId();
     String text = event.getMessage().getText();
 
-    CompletableFuture<UserProfileResponse> userProfileFuture;
-    if (type.equals("group")) {
-      userProfileFuture = lineMessagingClient.getGroupMemberProfile(groupId, userId);
+    if ("bye".equals(text)) {
+      CompletableFuture<BotApiResponse> botApiResponse;
+      if ("group".equals(type)) {
+        botApiResponse = lineMessagingClient.leaveGroup(groupId);
+      } else {
+        botApiResponse = lineMessagingClient.leaveRoom(groupId);
+      }
+      List<String> details = botApiResponse.get().getDetails();
+      lineMessagingClient.replyMessage(
+          new ReplyMessage(replyToken, new TextMessage(JsonUtils.objToString(details))));
     } else {
-      userProfileFuture = lineMessagingClient.getRoomMemberProfile(groupId, userId);
+      CompletableFuture<UserProfileResponse> userProfileFuture;
+      if ("group".equals(type)) {
+        userProfileFuture = lineMessagingClient.getGroupMemberProfile(groupId, userId);
+      } else {
+        userProfileFuture = lineMessagingClient.getRoomMemberProfile(groupId, userId);
+      }
+      UserProfileResponse userProfile = userProfileFuture.get();
+      lineMessagingClient.replyMessage(new ReplyMessage(replyToken, new TextMessage(
+          "這是" + type + ", user=" + JsonUtils.objToString(userProfile) + ", echo=" + text)));
     }
-    UserProfileResponse userProfile = userProfileFuture.get();
-    lineMessagingClient.replyMessage(new ReplyMessage(replyToken, new TextMessage(
-        "這是" + type + ", user=" + JsonUtils.objToString(userProfile) + ", echo=" + text)));
+
   }
 
   private void handleUserMessage(MessageEvent<TextMessageContent> event)
@@ -188,33 +202,12 @@ public class LineBotService extends AbstractService {
 
   @EventMapping
   public void handleJoinEvent(JoinEvent event) {
-    Source source = event.getSource();
-    String userId = source.getUserId();
-
     String replyToken = event.getReplyToken();
     try {
-
-      CompletableFuture<UserProfileResponse> userProfileFuture;
-      UserProfileResponse userProfile;
-
       if (replyToken != null) {
         TextMessage message =
             new TextMessage("大家好，我是line bot，現在時間=" + LocalDateTime.now().toString());
         lineMessagingClient.replyMessage(new ReplyMessage(replyToken, message));
-      } else {
-        userProfileFuture = lineMessagingClient.getGroupMemberProfile(source.getSenderId(), userId);
-        if (userProfileFuture == null) {
-          userProfileFuture =
-              lineMessagingClient.getRoomMemberProfile(source.getSenderId(), userId);
-        }
-
-        if (userProfileFuture != null) {
-          userProfile = userProfileFuture.get();
-          TextMessage message =
-              new TextMessage("source=" + JsonUtils.objToString(source) + ", username="
-                  + userProfile.getDisplayName() + ", user=" + JsonUtils.objToString(userProfile));
-          lineMessagingClient.replyMessage(new ReplyMessage(replyToken, message));
-        }
       }
     } catch (Exception e) {
       LOGGER.info(LOG_RQ, event);
@@ -274,7 +267,7 @@ public class LineBotService extends AbstractService {
     OrderInfo order = orderInfos.stream().filter(ordr -> ordrNo.equals(ordr.getOrderNo()))
         .findFirst().orElse(null);
     try {
-      if (orderInfos.isEmpty()) {
+      if (orderInfos.isEmpty() || order == null) {
         lineMessagingClient.replyMessage(
             new ReplyMessage(replyToken, new TextMessage(UserAction.ORDER_DETAIL.getDefReply())));
       } else {
@@ -348,7 +341,7 @@ public class LineBotService extends AbstractService {
 
   private String setPostBack(PostBackAction type, String msg) {
     PostBack orderMsg = new PostBack();
-    orderMsg.setType(PostBackAction.ORDER_DETAIL);
+    orderMsg.setType(type);
     orderMsg.setMessage(msg);
     return JsonUtils.objToString(orderMsg);
   }
