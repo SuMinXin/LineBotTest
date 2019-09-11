@@ -1,6 +1,7 @@
 package com.linebot.enums;
 
 public enum PostBackAction {
+
   BUY("BUY"), ORDER_DETAIL("ORDER");
 
   private final String type;

@@ -276,7 +276,7 @@ public class LineBotService extends AbstractService {
             .orElse(new Product());
         String orerDetail = UserAction.ORDER_DETAIL.getSysReply()
             .replace("{NO}", order.getOrderNo()).replace("{PRODUCT}", product.getName())
-            .replace("{DESC}", product.getDesc().concat("\\n").concat(product.getActiveUrl()))
+            .replace("{DESC}", product.getDesc().concat("\n").concat(product.getActiveUrl()))
             .replace("{AMOUNT}", String.valueOf(order.getPaxNumber()))
             .replace("{PRICE}", String.valueOf(order.getPrice()))
             .replace("{DATE}", order.getOrderNo());
@@ -299,8 +299,8 @@ public class LineBotService extends AbstractService {
   private CarouselTemplate getOrderCarouselTemplate(List<OrderInfo> orderInfos) {
     // 一次最多10筆CarouselColumn
     List<Product> products = activeService.getProducts(false);
-    List<CarouselColumn> columns = orderInfos.stream().map(ordr -> toCarouselColumn(ordr, products))
-        .collect(Collectors.toList());
+    List<CarouselColumn> columns = orderInfos.stream()
+        .map(order -> toCarouselColumn(order, products)).collect(Collectors.toList());
     return new CarouselTemplate(columns);
   }
 
@@ -333,15 +333,14 @@ public class LineBotService extends AbstractService {
     String payUrl = "https://member.liontravel.com/order/myorderlist";
     Action action1 = new PostbackAction(CarouselAction.ORDER.getAction1(),
         setPostBack(PostBackAction.ORDER_DETAIL, order.getOrderNo()), null);
-    Action action2 = new URIAction(CarouselAction.PRODUCT.getAction2(),
-        getURI("https://member.liontravel.com/order/myorderlist", payUrl), null);
-    return new CarouselColumn(getURI(product.getImageUrl(), DEFAULT_IMG_URL), product.getName(),
-        activeService.getActiveDesc(product), Arrays.asList(action1, action2));
+    Action action2 = new URIAction(CarouselAction.ORDER.getAction2(), getURI(payUrl, payUrl), null);
+    return new CarouselColumn(getURI(product.getImageUrl(), DEFAULT_IMG_URL), order.getOrderNo(),
+        product.getName(), Arrays.asList(action1, action2));
   }
 
-  private String setPostBack(PostBackAction type, String msg) {
+  private String setPostBack(PostBackAction action, String msg) {
     PostBack orderMsg = new PostBack();
-    orderMsg.setType(type);
+    orderMsg.setType(action);
     orderMsg.setMessage(msg);
     return JsonUtils.objToString(orderMsg);
   }
