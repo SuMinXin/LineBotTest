@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import com.google.api.services.sheets.v4.model.ValueRange;
@@ -14,7 +15,9 @@ import com.linebot.bean.Product;
 @Service
 public class SheetProductService {
 
-  private static final String SHEET_ID = "1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s";
+  @Value("${sheet-id.product}")
+  private String productSheetId;// = "1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s";
+
   private GoogleSheetService sheetService = GoogleSheetService.getInstance();
   private String range = SHEET_NAME + "A2:H";
   private static final String SHEET_NAME = "Action!";
@@ -23,7 +26,7 @@ public class SheetProductService {
   @Async("threadPoolTaskExecutor")
   protected void resetProduct() {
     // https://docs.google.com/spreadsheets/d/1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s/edit#gid=0
-    List<List<Object>> response = GoogleSheetService.getInstance().readGoogleSheet(SHEET_ID, range);
+    List<List<Object>> response = GoogleSheetService.getInstance().readGoogleSheet(productSheetId, range);
     if (!response.isEmpty()) {
       List<Product> acts = response.stream().map(this::toProduct).collect(Collectors.toList());
       for (Product act : acts) {
@@ -36,7 +39,7 @@ public class SheetProductService {
 
   protected Map<String, Product> getProduct() {
     // https://docs.google.com/spreadsheets/d/1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s/edit#gid=0
-    List<List<Object>> response = GoogleSheetService.getInstance().readGoogleSheet(SHEET_ID, range);
+    List<List<Object>> response = GoogleSheetService.getInstance().readGoogleSheet(productSheetId, range);
     if (!response.isEmpty()) {
       List<Product> acts = response.stream().map(this::toProduct).collect(Collectors.toList());
       for (Product act : acts) {
@@ -64,7 +67,7 @@ public class SheetProductService {
   protected void updateProduct(String id) {
     Product product = productsMap.get(id);
     ValueRange data = toValueRange(product);
-    sheetService.updateGoogleSheet(SHEET_ID, Arrays.asList(data));
+    sheetService.updateGoogleSheet(productSheetId, Arrays.asList(data));
   }
 
   private ValueRange toValueRange(Product product) {

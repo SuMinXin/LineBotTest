@@ -143,6 +143,8 @@ public class LineBotService extends AbstractService {
           lineMessagingClient.pushMessage(new PushMessage(userId, message));
         }
         break;
+      case COUPON:
+        break;
       case NEAR_STORE:
         // lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getProductList()
         // .stream().map(TextMessage::new).collect(Collectors.toList())));
