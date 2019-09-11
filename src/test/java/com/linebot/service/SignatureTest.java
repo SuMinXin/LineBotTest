@@ -1,4 +1,4 @@
-package com.linebot.appengine.service;
+package com.linebot.service;
 
 import java.util.Base64;
 

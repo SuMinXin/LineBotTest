@@ -1,4 +1,4 @@
-package com.linebot.appengine.service;
+package com.linebot.service;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
