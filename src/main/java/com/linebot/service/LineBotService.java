@@ -170,6 +170,8 @@ public class LineBotService extends AbstractService {
         int item = Integer.parseInt(text.replace(UserAction.BUY_PRODUCT.getMessage(), ""));
         sellItem(String.valueOf(item), replyToken, userId);
         break;
+      case COUPON:
+        break; // Line推送
       default:
         defaultMessage(event);
         break;

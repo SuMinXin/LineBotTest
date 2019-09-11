@@ -14,7 +14,9 @@ public enum UserAction {
 
   ORDER_DETAIL("訂單明細",
       "訂單資訊:{NO}\n產品名稱:{PRODUCT}\n產品說明:{DESC}\n購買數量:{AMOUNT}\n單價:{PRICE}\n訂購時間:{DATE}",
-      "目前無法查詢您的訂單，\n請稍後再試試。");
+      "目前無法查詢您的訂單，\n請稍後再試試。"),
+  
+  COUPON("COUPON訂單", "", ""),;
 
   private final String message;
   private final String sysReply;
