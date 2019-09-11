@@ -103,12 +103,22 @@ public class LineBotService extends AbstractService {
     }
   }
 
-  private void handleGroupMessage(MessageEvent<TextMessageContent> event, String type) {
+  private void handleGroupMessage(MessageEvent<TextMessageContent> event, String type)
+      throws InterruptedException, ExecutionException {
     String replyToken = event.getReplyToken();
     String groupId = event.getSource().getSenderId();
+    String userId = event.getSource().getUserId();
     String text = event.getMessage().getText();
-    lineMessagingClient.replyMessage(new ReplyMessage(replyToken,
-        new TextMessage("這是" + type + ", groupId=" + groupId + ", echo=" + text)));
+
+    CompletableFuture<UserProfileResponse> userProfileFuture;
+    if (type.equals("group")) {
+      userProfileFuture = lineMessagingClient.getGroupMemberProfile(groupId, userId);
+    } else {
+      userProfileFuture = lineMessagingClient.getRoomMemberProfile(groupId, userId);
+    }
+    UserProfileResponse userProfile = userProfileFuture.get();
+    lineMessagingClient.replyMessage(new ReplyMessage(replyToken, new TextMessage(
+        "這是" + type + ", user=" + JsonUtils.objToString(userProfile) + ", echo=" + text)));
   }
 
   private void handleUserMessage(MessageEvent<TextMessageContent> event)
@@ -200,7 +210,6 @@ public class LineBotService extends AbstractService {
 
         if (userProfileFuture != null) {
           userProfile = userProfileFuture.get();
-
           TextMessage message =
               new TextMessage("source=" + JsonUtils.objToString(source) + ", username="
                   + userProfile.getDisplayName() + ", user=" + JsonUtils.objToString(userProfile));
