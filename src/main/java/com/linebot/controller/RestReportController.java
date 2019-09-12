@@ -12,18 +12,22 @@ public class RestReportController {
   @Autowired
   private UserActiveService userActiveService;
 
-  @GetMapping(value = {"/report", "/report/{type}", "/product/{product}"})
-  public String report(@PathVariable(required = false) String type,
-      @PathVariable(required = false) String product) {
+  @GetMapping(value = {"/report", "/report/{type}"})
+  public String report(@PathVariable(required = false) String type) {
     type = (type == null ? "" : type);
     switch (type) {
       case "":
         return userActiveService.allAction();
       case "product":
-        return userActiveService.product(product);
+        return userActiveService.product(null);
       default:
         return "Can't Find Report Type";
     }
+  }
+
+  @GetMapping(value = {"/report/product/{product}"})
+  public String product(@PathVariable(required = false) String product) {
+    return userActiveService.product(product);
   }
 
 }

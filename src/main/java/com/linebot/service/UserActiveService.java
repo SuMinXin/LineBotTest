@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.linebot.bean.OrderInfo;
 import com.linebot.client.RedisClient;
 import com.linebot.enums.UserAction;
 import com.linebot.utils.JsonUtils;
@@ -66,7 +67,29 @@ public class UserActiveService {
   }
 
   public String product(String id) {
-    return "";
+    String pattern = "Promotion:";
+    Map<String, EventDetail> result = new HashMap<>();
+    Map<String, List<String>> datas = redisClient.retrieveByPattern(pattern.concat("*"));
+    for (Entry<String, List<String>> data : datas.entrySet()) {
+      String key = data.getKey();
+      if (id == null || key.equals(pattern.concat(id))) {
+        List<String> value = data.getValue();
+        result.put(key, setPruductDetail(value));
+      }
+    }
+    return JsonUtils.objToString(result);
+  }
+
+  private EventDetail setPruductDetail(List<String> datas) {
+    EventDetail result = new EventDetail();
+    for (String data : datas) {
+      OrderInfo log = JsonUtils.fromJson(data, OrderInfo.class);
+      if (log != null && log.getOrderDate() != null) {
+        result.setTotal(result.getTotal() + log.getPaxNumber());
+        result.setTime(log.getOrderDate());
+      }
+    }
+    return result;
   }
 
   private String getHashKey(String action) {
