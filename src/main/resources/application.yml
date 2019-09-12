@@ -20,3 +20,6 @@ spring.redis:
 
 sheet-id:
   product: '1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s'
+
+actice:
+  cache.expired-time: 1

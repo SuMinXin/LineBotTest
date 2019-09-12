@@ -5,6 +5,7 @@ import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -152,10 +153,6 @@ public class LineBotService extends AbstractService {
           lineMessagingClient.replyMessage(
               new ReplyMessage(replyToken, new TextMessage(UserAction.MY_ORDER.getSysReply())));
         } else {
-          // 一次最多5筆TextMessage
-          if (orderInfos.size() > 5) {
-            orderInfos = orderInfos.subList(0, 5);
-          }
           Message message = new TemplateMessage(UserAction.MY_ORDER.getSysReply(),
               getOrderCarouselTemplate(orderInfos));
           lineMessagingClient.pushMessage(new PushMessage(userId, message));
@@ -251,7 +248,7 @@ public class LineBotService extends AbstractService {
       throws InterruptedException, ExecutionException {
     try {
       // 扣量
-      Product product = activeService.sell(itemId);
+      Product product = activeService.sellProduct(itemId);
 
       // 推送訊息
       lineMessagingClient.replyMessage(new ReplyMessage(replyToken,
@@ -307,6 +304,11 @@ public class LineBotService extends AbstractService {
 
   private CarouselTemplate getOrderCarouselTemplate(List<OrderInfo> orderInfos) {
     // 一次最多10筆CarouselColumn
+    int size = orderInfos.size();
+    if (size > 10) {
+      orderInfos = orderInfos.subList(size - 10, size);
+    }
+    Collections.reverse(orderInfos);
     List<Product> products = activeService.getProducts(false);
     List<CarouselColumn> columns = orderInfos.stream()
         .map(order -> toCarouselColumn(order, products)).collect(Collectors.toList());
@@ -331,6 +333,7 @@ public class LineBotService extends AbstractService {
         getURI(product.getActiveUrl(), DEFAULT_URL), null);
     Action action2 = new PostbackAction(CarouselAction.PRODUCT.getAction2(),
         setPostBack(PostBackAction.BUY, product.getId()), null);
+    // text最多4行
     return new CarouselColumn(getURI(product.getImageUrl(), DEFAULT_IMG_URL), product.getName(),
         activeService.getActiveDesc(product), Arrays.asList(action1, action2));
   }
@@ -373,4 +376,5 @@ public class LineBotService extends AbstractService {
 
     return new Multicast(user, message);
   }
+
 }
