@@ -4,6 +4,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Comparator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,6 +86,7 @@ public class OrderService {
       return Collections.emptyList();
     }
     return orderList.stream().map(order -> JsonUtils.fromJson(order, OrderInfo.class))
+        .sorted(Comparator.comparing(OrderInfo::getOrderDate))
         .collect(Collectors.toList());
   }
 

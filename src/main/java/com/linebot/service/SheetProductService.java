@@ -2,12 +2,12 @@ package com.linebot.service;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import com.linebot.bean.Product;
@@ -15,40 +15,37 @@ import com.linebot.bean.Product;
 @Service
 public class SheetProductService {
 
+  // https://docs.google.com/spreadsheets/d/1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s/edit#gid=0
   @Value("${sheet-id.product}")
-  private String productSheetId;// = "1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s";
+  private String productSheetId;
 
   private GoogleSheetService sheetService = GoogleSheetService.getInstance();
   private String range = SHEET_NAME + "A2:H";
   private static final String SHEET_NAME = "Action!";
-  protected static Map<String, Product> productsMap = new HashMap<>();
+  private static Map<String, Product> productMap = new ConcurrentHashMap<>();
 
-  @Async("threadPoolTaskExecutor")
-  protected void resetProduct() {
-    // https://docs.google.com/spreadsheets/d/1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s/edit#gid=0
-    List<List<Object>> response = GoogleSheetService.getInstance().readGoogleSheet(productSheetId, range);
-    if (!response.isEmpty()) {
-      List<Product> acts = response.stream().map(this::toProduct).collect(Collectors.toList());
-      for (Product act : acts) {
-        if (!productsMap.containsKey(act.getId())) {
-          productsMap.put(act.getId(), act);
-        }
-      }
-    }
+  public void resetProductMap() {
+    productMap.clear();
+    setProductMap();
   }
 
-  protected Map<String, Product> getProduct() {
-    // https://docs.google.com/spreadsheets/d/1qenyxoIhzbHK-09nVxnVpDBlp3LepvQ7ALmXZKzPV7s/edit#gid=0
-    List<List<Object>> response = GoogleSheetService.getInstance().readGoogleSheet(productSheetId, range);
-    if (!response.isEmpty()) {
-      List<Product> acts = response.stream().map(this::toProduct).collect(Collectors.toList());
-      for (Product act : acts) {
-        if (!productsMap.containsKey(act.getId())) {
-          productsMap.put(act.getId(), act);
-        }
-      }
+  public Product getProduct(String productId) {
+    return productMap.get(productId);
+  }
+
+  public Map<String, Product> getProductMap(boolean isExpired) {
+    if (isExpired || productMap.isEmpty()) {
+      setProductMap();
     }
-    return productsMap;
+    return productMap;
+  }
+
+  protected void setProductMap() {
+    List<List<Object>> response = sheetService.readGoogleSheet(productSheetId, range);
+    if (!response.isEmpty()) {
+      productMap.putAll(response.stream().map(this::toProduct)
+          .collect(Collectors.toMap(Product::getId, Function.identity())));
+    }
   }
 
   private Product toProduct(List<Object> object) {
@@ -64,8 +61,10 @@ public class SheetProductService {
     return product;
   }
 
-  protected void updateProduct(String id) {
-    Product product = productsMap.get(id);
+  public void updateProduct(String id, int quantity) {
+    Product product = productMap.get(id);
+    product.setAmount(quantity);
+
     ValueRange data = toValueRange(product);
     sheetService.updateGoogleSheet(productSheetId, Arrays.asList(data));
   }

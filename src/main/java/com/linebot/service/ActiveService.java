@@ -1,29 +1,33 @@
 package com.linebot.service;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.linebot.bean.Product;
 
 @Service
-public class ActiveService extends SheetProductService {
+public class ActiveService {
+
+  @Value("${actice.cache.expired-time}")
+  private Integer expriredTime;
 
   @Autowired
   private OrderService orderService;
 
-  private Lock lock = new ReentrantLock();
+  @Autowired
+  private SheetProductService productService;
 
-  private static Integer exprireTime = 10;
+  private Lock lock = new ReentrantLock();
 
   private static long prevResetTime = 0;
 
-  // ---------------------------- 依Message 回覆 ----------------------------
-  // HI
   public List<String> getProductList() {
     return getProducts(true).stream().map(action -> {
       StringBuilder active = new StringBuilder();
@@ -35,68 +39,79 @@ public class ActiveService extends SheetProductService {
     }).collect(Collectors.toList());
   }
 
-  // YO
-  public List<Product> getProducts(boolean excludeZero) {
-    readData();
-    if (excludeZero) {
-      return productsMap.values().stream().filter(act -> act.getAmount() > 0)
-          .collect(Collectors.toList()); // 只回傳可賣商品
+  /**
+   * 取得商品清單
+   * 
+   * @param isSaleable 可售商品
+   */
+  public List<Product> getProducts(boolean isSaleable) {
+    Collection<Product> products = productService.getProductMap(isExpire()).values();
+
+    // 只回傳可賣商品
+    if (isSaleable) {
+      return products.stream().filter(act -> act.getAmount() > 0).collect(Collectors.toList());
     } else {
-      return new ArrayList<>(productsMap.values());
+      return new ArrayList<>(products);
     }
   }
 
-  // ---------------------------- 購買商品 ----------------------------
-  public Product sell(String id) throws Exception {
-    // 數量 -1
+  public Product sellProduct(String productId) {
     lock.lock();
-    Product product = null;
     try {
-      product = productsMap.get(id);
-      if (product == null) {
-        throw new Exception("Active Not Exist");
+      Product product = getProduct(productId);
+
+      int quantity = product.getAmount();
+
+      // 已售完
+      if (quantity <= 0) {
+        throw new ActiveException("Sold Out");
       }
-      if (product.getAmount() > 0) {
-        product.setAmount(product.getAmount() - 1);
-        updateProduct(id);
-      } else {
-        // 結算
-        orderService.transferOrders(id);
-        throw new Exception("Sold Out");
+
+      // 扣量(一次只能買一組)
+      quantity--;
+
+      // 更新剩餘數量
+      productService.updateProduct(productId, quantity);
+
+      // 結算
+      if (quantity <= 0) {
+        orderService.transferOrders(productId);
       }
+
+      return product;
     } finally {
       lock.unlock();
+    }
+  }
+
+  public Product getProduct(String productId) {
+    Product product = productService.getProduct(productId);
+    // 查無商品
+    if (product == null) {
+      throw new ActiveException("Active Not Exist");
     }
     return product;
   }
 
-  public Product getProduct(String itemId) {
-    return productsMap.get(itemId);
-  }
-
-  // ---------------------------- Product Function ----------------------------
-
   public void resetData() {
-    resetProduct();
-  }
-
-  private void readData() {
-    if (productsMap.isEmpty()) {
-      getProduct();
-    } else if (isExpire()) {
-      resetProduct();
-    }
+    setPrevResetTime();
+    productService.resetProductMap();
   }
 
   private boolean isExpire() {
-    long minutes = TimeUnit.MILLISECONDS.toMinutes(System.currentTimeMillis() - prevResetTime);
-    if (prevResetTime <= 0 || minutes > exprireTime) {
+    long now = System.currentTimeMillis();
+    long remainingTime = now - prevResetTime;
+    if (TimeUnit.MILLISECONDS.toMinutes(remainingTime) >= expriredTime) {
+      setPrevResetTime();
       return true;
     }
     return false;
   }
 
-  // ---------------------------- Format ----------------------------
+  private void setPrevResetTime() {
+    prevResetTime = System.currentTimeMillis();
+  }
+
   public String getActiveDesc(Product product) {
     StringBuilder description = new StringBuilder();
     description.append(product.getDesc());
@@ -108,4 +123,5 @@ public class ActiveService extends SheetProductService {
     description.append("剩餘數量：").append(product.getAmount());
     return description.toString();
   }
+
 }
