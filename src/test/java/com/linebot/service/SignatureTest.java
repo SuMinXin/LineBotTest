@@ -10,9 +10,10 @@ public class SignatureTest {
   @Test
   public void createSignatureTest() throws Exception {
     String channelSecret = "1efd9ec85bf96834030d0fd63f0e1424";
+    String message = "優惠券";
     // Request body string
     String httpRequestBody =
-        "{\"events\":[{\"type\":\"message\",\"replyToken\":\"af7738d161c4486a84cdceb0a43a7fd1\",\"source\":{\"userId\":\"U6a408ec15c63c73fb36c17ea1258939f\",\"type\":\"user\"},\"timestamp\":1567481188463,\"message\":{\"type\":\"sticker\",\"id\":\"10521461786656\",\"packageId\":\"2\",\"stickerId\":\"32\"}}],\"destination\":\"Ua73de9ca23aa0664b9f6b99f4c55796d\"}";
+        "{\"events\":[{\"type\":\"message\",\"replyToken\":\"c9993dced4994005b6aad85ec96432ae\",\"source\":{\"userId\":\"Udbb24468127d89d1b43f54fb60517669\",\"type\":\"user\"},\"timestamp\":1567481188463,\"message\":{\"type\":\"text\",\"id\":\"10521461786656\",\"text\":\"" + message + "\"}}],\"destination\":\"Ua73de9ca23aa0664b9f6b99f4c55796d\"}";
     SecretKeySpec key = new SecretKeySpec(channelSecret.getBytes(), "HmacSHA256");
     Mac mac = Mac.getInstance("HmacSHA256");
     mac.init(key);

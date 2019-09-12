@@ -68,6 +68,9 @@ public class LineBotService extends AbstractService {
   @Autowired
   private OrderService orderService;
 
+  @Autowired
+  private UserActiveService userActiveService;
+
   @EventMapping
   public void handleDefaultMessageEvent(Event event) {
     LOGGER.info(LOG_RQ, event);
@@ -140,8 +143,9 @@ public class LineBotService extends AbstractService {
     String text = event.getMessage().getText();
     String replyToken = event.getReplyToken();
     String userId = event.getSource().getUserId();
-
-    switch (UserAction.fromMessage(text.toUpperCase())) {
+    UserAction action = UserAction.fromMessage(text.toUpperCase());
+    String active = "";
+    switch (action) {
       case MY_ORDER:
         List<OrderInfo> orderInfos = orderService.retrieveOrders(userId);
         if (orderInfos.isEmpty()) {
@@ -172,11 +176,13 @@ public class LineBotService extends AbstractService {
       case BUY_PRODUCT:
         int item = Integer.parseInt(text.replace(UserAction.BUY_PRODUCT.getMessage(), ""));
         sellItem(String.valueOf(item), replyToken, userId);
+        active = "buy_product".concat(String.valueOf(item));
         break;
       default:
         defaultMessage(event);
         break;
     }
+    userActiveService.userActionLog(action, userId, text, active);
   }
 
   @EventMapping
@@ -260,8 +266,8 @@ public class LineBotService extends AbstractService {
         errMessage = UserAction.BUY_PRODUCT.getDefReply().replace("{NAME}", product.getName());
       }
 
-      lineMessagingClient.replyMessage(new ReplyMessage(replyToken, new TextMessage(errMessage)))
-          .get();
+       lineMessagingClient.replyMessage(new ReplyMessage(replyToken, new TextMessage(errMessage)))
+       .get();
     }
   }
 
