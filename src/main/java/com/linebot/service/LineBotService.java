@@ -158,6 +158,7 @@ public class LineBotService extends AbstractService {
         }
         break;
       case COUPON:
+        // 優惠券透過OfficeAccountManager管理
         break;
       case NEAR_STORE:
         // lineMessagingClient.pushMessage(new PushMessage(userId, activeService.getProductList()
@@ -172,8 +173,6 @@ public class LineBotService extends AbstractService {
         int item = Integer.parseInt(text.replace(UserAction.BUY_PRODUCT.getMessage(), ""));
         sellItem(String.valueOf(item), replyToken, userId);
         break;
-      case COUPON:
-        break; // Line推送
       default:
         defaultMessage(event);
         break;
