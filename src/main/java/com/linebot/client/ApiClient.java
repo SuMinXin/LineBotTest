@@ -18,16 +18,16 @@ import org.springframework.stereotype.Component;
 import com.linebot.utils.JsonUtils;
 
 @Component
-public final class LionApiClient {
+public final class ApiClient {
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(LionApiClient.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(ApiClient.class);
 
-	private static final String CORE_API_ORDER = "https://uorders-core.api.liontravel.com/";
+	private static final String API_URL = "https://core.api.test.com/";
 
 	public String post(String action, Object request) {
 		SSLConnectionSocketFactory sslsf = null;
 		try {
-			HttpPost httpPost = new HttpPost(CORE_API_ORDER + action);
+			HttpPost httpPost = new HttpPost(API_URL + action);
 			httpPost.addHeader("Content-Type", "application/json");
 			httpPost.setEntity(new StringEntity(JsonUtils.objToString(request), StandardCharsets.UTF_8));
 			try (CloseableHttpClient httpClient = HttpClients.custom().setSSLSocketFactory(sslsf).build()) {
